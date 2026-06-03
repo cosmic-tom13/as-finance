@@ -1443,12 +1443,10 @@ function wizardNext(skip = false) {
       const v = parseFloat(document.getElementById('ws-miles')?.value);
       if (!v || v <= 0) { alert('Please enter miles driven.'); return; }
       wizardData.miles = v;
+    } else if (step.type === 'vendor') {
+      wizardData.vendor = document.getElementById('ws-vendor-input')?.value?.trim() || '';
     } else if (step.type === 'text') {
-      if (step.type === 'vendor') {
-        wizardData.vendor = document.getElementById('ws-vendor-input')?.value?.trim() || '';
-      } else {
-        wizardData[step.key] = document.getElementById('ws-text')?.value || '';
-      }
+      wizardData[step.key] = document.getElementById('ws-text')?.value || '';
     } else if (step.type === 'date') {
       const v = document.getElementById('ws-date')?.value;
       wizardData.date = v || todayStr();
