@@ -700,13 +700,13 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
     <!-- Customer filter -->
     <div class="filter-row">
       <p class="filter-label">Customer</p>
-      <div class="pill-row" id="r-customer-pills"></div>
+      <select id="r-customer-select" onchange="setReportCustomer(this.value)"></select>
     </div>
 
     <!-- Job filter -->
-    <div class="filter-row" id="r-job-filter-row">
+    <div class="filter-row" id="r-job-filter-row" style="display:none">
       <p class="filter-label">Job</p>
-      <div class="pill-row" id="r-job-pills"></div>
+      <select id="r-job-select" onchange="setReportJob(this.value)"></select>
     </div>
 
     <!-- Active filter banner -->
@@ -1675,29 +1675,25 @@ function filterEntries(d) {
 }
 
 function buildCustomerPills() {
-  const custs = _customers;
-  const el = document.getElementById('r-customer-pills');
-  if (!el) return;
-  let pills = `<button class="pill ${reportCustomer === '' ? 'active' : ''}" onclick="setReportCustomer('')">All</button>`;
-  custs.forEach(c => {
-    pills += `<button class="pill ${reportCustomer === c ? 'active' : ''}" onclick="setReportCustomer('${c.replace(/'/g, "\'")}')">${c}</button>`;
-  });
-  el.innerHTML = pills;
+  const sel = document.getElementById('r-customer-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">All customers</option>' +
+    _customers.map(c => `<option value="${c.replace(/"/g,'&quot;')}">${c}</option>`).join('');
+  sel.value = reportCustomer;
 }
 
 function buildJobPills() {
-  const allJobs = _jobs;
-  const jobs = reportCustomer ? allJobs.filter(j => j.customer === reportCustomer) : allJobs;
   const row = document.getElementById('r-job-filter-row');
-  const el = document.getElementById('r-job-pills');
-  if (!el) return;
+  const sel = document.getElementById('r-job-select');
+  if (!row || !sel) return;
+  const jobs = reportCustomer
+    ? _jobs.filter(j => j.customer === reportCustomer)
+    : _jobs;
   if (jobs.length === 0) { row.style.display = 'none'; return; }
   row.style.display = 'flex';
-  let pills = `<button class="pill ${reportJob === '' ? 'active' : ''}" onclick="setReportJob('')">All jobs</button>`;
-  jobs.forEach(j => {
-    pills += `<button class="pill ${reportJob === j.id ? 'active' : ''}" onclick="setReportJob('${j.id}')">${j.name}${j.location ? ' · '+j.location : ''}</button>`;
-  });
-  el.innerHTML = pills;
+  sel.innerHTML = '<option value="">All jobs</option>' +
+    jobs.map(j => `<option value="${j.id}">${j.name}${j.location ? ' — ' + j.location : ''}</option>`).join('');
+  sel.value = reportJob;
 }
 
 function updateFilterBanner() {
