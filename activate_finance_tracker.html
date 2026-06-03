@@ -218,6 +218,78 @@ html, body {
 .empty-state i { font-size: 44px; display: block; margin-bottom: 10px; color: var(--border-strong); }
 .empty-state p { font-size: 14px; }
 
+/* QUOTE STATUS TAGS */
+.tag { display: inline-block; padding: 3px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.tag.draft      { background: var(--surface2); color: var(--text3); }
+.tag.finalized  { background: var(--brand-light); color: var(--brand-dark); }
+.tag.completed  { background: var(--warn-bg); color: var(--warn); }
+.tag.paid       { background: var(--success-bg); color: var(--success); }
+
+/* QUOTE LIST CARDS */
+.quote-item {
+  background: var(--surface);
+  padding: 14px 14px;
+  display: flex; align-items: flex-start; gap: 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.quote-item:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+.quote-item:last-child { border-radius: 0 0 var(--radius) var(--radius); border-bottom: none; }
+.quote-item:only-child { border-radius: var(--radius); border-bottom: none; }
+.quote-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--brand-light); color: var(--brand); display: flex; align-items: center; justify-content: center; font-size: 17px; flex-shrink: 0; }
+.quote-info { flex: 1; min-width: 0; }
+.quote-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.quote-sub { font-size: 12px; color: var(--text2); margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+.quote-right { text-align: right; flex-shrink: 0; }
+.quote-amt { font-size: 14px; font-weight: 600; font-family: var(--mono); color: var(--text); }
+.quote-bal { font-size: 11px; color: var(--warn); margin-top: 2px; }
+
+/* QUOTE FILTER TABS */
+.filter-tabs { display: flex; gap: 0; padding: 12px 16px 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.filter-tabs::-webkit-scrollbar { display: none; }
+.filter-tab { flex-shrink: 0; padding: 7px 14px; border-radius: var(--radius-pill); font-size: 13px; font-weight: 500; background: var(--surface2); border: none; cursor: pointer; color: var(--text2); font-family: var(--font); margin-right: 6px; transition: background .15s, color .15s; }
+.filter-tab.active { background: var(--brand); color: #fff; }
+
+/* QUOTE DETAIL */
+.detail-section { padding: 14px 16px 0; }
+.detail-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 14px 16px; box-shadow: var(--shadow); }
+.detail-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.detail-row:last-child { border-bottom: none; }
+.detail-row .lbl { font-size: 13px; color: var(--text2); }
+.detail-row .val { font-size: 13px; font-weight: 500; text-align: right; }
+.line-item-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.line-item-row:last-child { border-bottom: none; }
+.line-item-desc { font-size: 14px; font-weight: 500; flex: 1; }
+.line-item-meta { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.line-item-total { font-size: 14px; font-weight: 600; font-family: var(--mono); flex-shrink: 0; }
+.line-item-del { background: none; border: none; color: var(--text3); cursor: pointer; padding: 4px; font-size: 16px; flex-shrink: 0; }
+.line-item-del:active { color: var(--danger); }
+.totals-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 12px 16px; box-shadow: var(--shadow); }
+.totals-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 14px; }
+.totals-row.grand { font-weight: 700; font-size: 16px; border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px; }
+.totals-row.balance { color: var(--warn); font-weight: 600; }
+.payment-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.payment-row:last-child { border-bottom: none; }
+.payment-info { font-size: 13px; }
+.payment-method { font-size: 12px; color: var(--text2); margin-top: 1px; }
+.payment-amt { font-size: 14px; font-weight: 600; font-family: var(--mono); color: var(--success); }
+
+/* ACTION BAR */
+.action-bar { padding: 12px 16px calc(12px + var(--safe-bottom)); background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; display: flex; gap: 10px; }
+
+/* PRICE GUIDE MODAL LIST */
+.guide-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.guide-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); cursor: pointer; gap: 10px; }
+.guide-item:last-child { border-bottom: none; }
+.guide-item:active { background: var(--surface2); margin: 0 -4px; padding: 10px 4px; border-radius: 8px; }
+.guide-item-name { flex: 1; font-size: 14px; font-weight: 500; }
+.guide-item-price { font-size: 13px; color: var(--text2); flex-shrink: 0; }
+.guide-item-unit { font-size: 11px; color: var(--text3); margin-top: 1px; }
+.guide-selected-hint { font-size: 12px; color: var(--brand); padding: 6px 0 2px; }
+
+/* QUOTE FORM */
+.quote-form { display: flex; flex-direction: column; gap: 14px; padding: 16px; }
+
 /* PIN SCREEN */
 .pin-screen {
   flex: 1;
@@ -647,6 +719,7 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
     <button class="nav-btn active" onclick="showScreen('screen-home')"><i class="ti ti-home"></i>Home</button>
     <button class="nav-btn" onclick="showScreen('screen-reports')"><i class="ti ti-chart-bar"></i>Reports</button>
     <button class="nav-btn" onclick="showScreen('screen-history')"><i class="ti ti-list"></i>History</button>
+    <button class="nav-btn" onclick="showScreen('screen-quotes')"><i class="ti ti-file-invoice"></i>Quotes</button>
     <button class="nav-btn" onclick="showScreen('screen-settings')"><i class="ti ti-settings"></i>Settings</button>
   </div>
 </div>
@@ -780,6 +853,7 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
     <button class="nav-btn" onclick="showScreen('screen-home')"><i class="ti ti-home"></i>Home</button>
     <button class="nav-btn active" onclick="showScreen('screen-reports')"><i class="ti ti-chart-bar"></i>Reports</button>
     <button class="nav-btn" onclick="showScreen('screen-history')"><i class="ti ti-list"></i>History</button>
+    <button class="nav-btn" onclick="showScreen('screen-quotes')"><i class="ti ti-file-invoice"></i>Quotes</button>
     <button class="nav-btn" onclick="showScreen('screen-settings')"><i class="ti ti-settings"></i>Settings</button>
   </div>
 </div>
@@ -803,6 +877,7 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
     <button class="nav-btn" onclick="showScreen('screen-home')"><i class="ti ti-home"></i>Home</button>
     <button class="nav-btn" onclick="showScreen('screen-reports')"><i class="ti ti-chart-bar"></i>Reports</button>
     <button class="nav-btn active" onclick="showScreen('screen-history')"><i class="ti ti-list"></i>History</button>
+    <button class="nav-btn" onclick="showScreen('screen-quotes')"><i class="ti ti-file-invoice"></i>Quotes</button>
     <button class="nav-btn" onclick="showScreen('screen-settings')"><i class="ti ti-settings"></i>Settings</button>
   </div>
 </div>
@@ -845,6 +920,11 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
       <button class="add-chip" style="margin-top:8px" onclick="openModal('modal-addcat')"><i class="ti ti-plus"></i>Add category</button>
     </div>
     <div class="settings-group">
+      <h3>Price Guide</h3>
+      <div class="chip-area" id="price-guide-list"></div>
+      <button class="add-chip" style="margin-top:8px" onclick="openAddPriceGuideItem()"><i class="ti ti-plus"></i>Add item</button>
+    </div>
+    <div class="settings-group">
       <h3>Data</h3>
       <div class="settings-card">
         <div class="settings-row" onclick="exportCSV()">
@@ -861,7 +941,87 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
     <button class="nav-btn" onclick="showScreen('screen-home')"><i class="ti ti-home"></i>Home</button>
     <button class="nav-btn" onclick="showScreen('screen-reports')"><i class="ti ti-chart-bar"></i>Reports</button>
     <button class="nav-btn" onclick="showScreen('screen-history')"><i class="ti ti-list"></i>History</button>
+    <button class="nav-btn" onclick="showScreen('screen-quotes')"><i class="ti ti-file-invoice"></i>Quotes</button>
     <button class="nav-btn active" onclick="showScreen('screen-settings')"><i class="ti ti-settings"></i>Settings</button>
+  </div>
+</div>
+
+<!-- QUOTES LIST -->
+<div id="screen-quotes" class="screen">
+  <div class="topbar">
+    <h1>Quotes</h1>
+    <button class="topbar-btn" onclick="showScreen('screen-quote-new')" aria-label="New quote"><i class="ti ti-plus"></i></button>
+  </div>
+  <div class="filter-tabs" id="quote-filter-tabs">
+    <button class="filter-tab active" onclick="setQuoteFilter('all',this)">All</button>
+    <button class="filter-tab" onclick="setQuoteFilter('draft',this)">Draft</button>
+    <button class="filter-tab" onclick="setQuoteFilter('active',this)">Active</button>
+    <button class="filter-tab" onclick="setQuoteFilter('paid',this)">Paid</button>
+  </div>
+  <div class="scrollable" style="padding-top:12px">
+    <div id="quotes-list" class="entry-list"></div>
+  </div>
+  <div class="nav-bar">
+    <button class="nav-btn" onclick="showScreen('screen-home')"><i class="ti ti-home"></i>Home</button>
+    <button class="nav-btn" onclick="showScreen('screen-reports')"><i class="ti ti-chart-bar"></i>Reports</button>
+    <button class="nav-btn" onclick="showScreen('screen-history')"><i class="ti ti-list"></i>History</button>
+    <button class="nav-btn active" onclick="showScreen('screen-quotes')"><i class="ti ti-file-invoice"></i>Quotes</button>
+    <button class="nav-btn" onclick="showScreen('screen-settings')"><i class="ti ti-settings"></i>Settings</button>
+  </div>
+</div>
+
+<!-- NEW QUOTE -->
+<div id="screen-quote-new" class="screen">
+  <div class="topbar">
+    <button class="topbar-btn" onclick="showScreen('screen-quotes')" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
+    <h1>New Quote</h1>
+    <span style="width:34px"></span>
+  </div>
+  <div class="scrollable">
+    <div class="quote-form">
+      <div>
+        <label class="field-label">Quote title</label>
+        <input type="text" id="qn-title" placeholder="e.g. Master Bath Remodel">
+      </div>
+      <div>
+        <label class="field-label">Customer <span style="color:var(--danger)">*</span></label>
+        <select id="qn-customer" onchange="updateQuoteNewJobs()">
+          <option value="">Select customer…</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Link to job (optional)</label>
+        <select id="qn-job">
+          <option value="">No specific job</option>
+        </select>
+      </div>
+      <div>
+        <label class="field-label">Date</label>
+        <input type="date" id="qn-date">
+      </div>
+      <div>
+        <label class="field-label">Notes (optional)</label>
+        <textarea id="qn-notes" placeholder="Any special instructions…" style="height:72px;resize:none"></textarea>
+      </div>
+    </div>
+  </div>
+  <div class="action-bar">
+    <button class="btn-primary" style="flex:1" onclick="createNewQuote()">Create Draft</button>
+  </div>
+</div>
+
+<!-- QUOTE DETAIL -->
+<div id="screen-quote-detail" class="screen">
+  <div class="topbar">
+    <button class="topbar-btn" onclick="showScreen('screen-quotes')" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
+    <h1 id="qd-title">Quote</h1>
+    <button class="topbar-btn" id="qd-edit-btn" onclick="openEditQuoteInfo()" aria-label="Edit"><i class="ti ti-pencil"></i></button>
+  </div>
+  <div class="scrollable" id="qd-body" style="padding-top:4px">
+    <!-- Populated by renderQuoteDetail() -->
+  </div>
+  <div class="action-bar" id="qd-actions">
+    <!-- Populated by renderQuoteDetail() -->
   </div>
 </div>
 
@@ -975,6 +1135,126 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
   </div>
 </div>
 
+<!-- ADD LINE ITEM -->
+<div class="modal-overlay" id="modal-add-line-item" onclick="closeModalOutside(event,'modal-add-line-item')">
+  <div class="modal-sheet" style="max-height:85vh;display:flex;flex-direction:column">
+    <div class="modal-handle"></div>
+    <p class="modal-title">Add Line Item</p>
+    <input type="text" id="guide-search" placeholder="Search price guide…" oninput="filterGuideList(this.value)" autocomplete="off" style="margin-bottom:8px">
+    <div class="guide-list" id="guide-list-container" style="max-height:240px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 12px;margin-bottom:10px">
+      <!-- populated by openAddLineItemModal() -->
+    </div>
+    <div id="guide-selected-hint" class="guide-selected-hint" style="display:none"></div>
+    <label class="field-label">Description</label>
+    <input type="text" id="li-desc" placeholder="What work is this for?">
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <div style="flex:1">
+        <label class="field-label">Qty</label>
+        <input type="number" id="li-qty" value="1" min="0.01" step="any" inputmode="decimal" oninput="calcLineItemTotal()">
+      </div>
+      <div style="flex:1">
+        <label class="field-label">Unit price ($)</label>
+        <input type="number" id="li-price" placeholder="0.00" min="0" step="any" inputmode="decimal" oninput="calcLineItemTotal()">
+      </div>
+      <div style="flex:1">
+        <label class="field-label">Total ($)</label>
+        <input type="number" id="li-total" placeholder="0.00" readonly style="background:var(--surface2)">
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn-secondary" onclick="closeModal('modal-add-line-item')">Cancel</button>
+      <button class="btn-primary" onclick="confirmAddLineItem()">Add to Quote</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECORD PAYMENT -->
+<div class="modal-overlay" id="modal-record-payment" onclick="closeModalOutside(event,'modal-record-payment')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <p class="modal-title">Record Payment</p>
+    <label class="field-label">Amount received ($)</label>
+    <input type="number" id="pay-amount" placeholder="0.00" inputmode="decimal" step="any" min="0.01">
+    <label class="field-label" style="margin-top:12px">Payment method</label>
+    <div class="choice-grid grid2" id="pay-method-choices" style="margin-top:6px">
+      <button class="choice-btn" onclick="selectPayMethod('Cash')">Cash</button>
+      <button class="choice-btn" onclick="selectPayMethod('Check')">Check</button>
+      <button class="choice-btn" onclick="selectPayMethod('Venmo')">Venmo</button>
+      <button class="choice-btn" onclick="selectPayMethod('Cash App')">Cash App</button>
+    </div>
+    <label class="field-label" style="margin-top:12px">Date</label>
+    <input type="date" id="pay-date">
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn-secondary" onclick="closeModal('modal-record-payment')">Cancel</button>
+      <button class="btn-primary" onclick="confirmRecordPayment()">Save Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT QUOTE INFO -->
+<div class="modal-overlay" id="modal-edit-quote-info" onclick="closeModalOutside(event,'modal-edit-quote-info')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <p class="modal-title">Edit Quote Info</p>
+    <label class="field-label">Title</label>
+    <input type="text" id="eqi-title" placeholder="Quote title">
+    <label class="field-label" style="margin-top:12px">Customer</label>
+    <select id="eqi-customer" onchange="updateEqiJobs()">
+      <option value="">Select customer…</option>
+    </select>
+    <label class="field-label" style="margin-top:12px">Job (optional)</label>
+    <select id="eqi-job">
+      <option value="">No specific job</option>
+    </select>
+    <label class="field-label" style="margin-top:12px">Notes (optional)</label>
+    <textarea id="eqi-notes" style="height:64px;resize:none"></textarea>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn-secondary" onclick="closeModal('modal-edit-quote-info')">Cancel</button>
+      <button class="btn-primary" onclick="saveQuoteInfo()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRICE GUIDE ITEM -->
+<div class="modal-overlay" id="modal-price-guide-item" onclick="closeModalOutside(event,'modal-price-guide-item')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <p class="modal-title" id="pg-modal-title">Add Price Guide Item</p>
+    <input type="hidden" id="pg-edit-id">
+    <label class="field-label">Name</label>
+    <input type="text" id="pg-name" placeholder="e.g. Install ceiling fan">
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <div style="flex:1">
+        <label class="field-label">Min price ($)</label>
+        <input type="number" id="pg-min" placeholder="75" inputmode="decimal" min="0" step="any">
+      </div>
+      <div style="flex:1">
+        <label class="field-label">Max price ($)</label>
+        <input type="number" id="pg-max" placeholder="150" inputmode="decimal" min="0" step="any">
+      </div>
+    </div>
+    <label class="field-label" style="margin-top:12px">Unit</label>
+    <select id="pg-unit">
+      <option value="flat">flat</option>
+      <option value="per hour">per hour</option>
+      <option value="per sq ft">per sq ft</option>
+      <option value="per door">per door</option>
+      <option value="per window">per window</option>
+      <option value="per fixture">per fixture</option>
+      <option value="per outlet">per outlet</option>
+      <option value="per room">per room</option>
+      <option value="per board">per board</option>
+      <option value="per post">per post</option>
+      <option value="per linear ft">per linear ft</option>
+    </select>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn-secondary" id="pg-delete-btn" onclick="deletePriceGuideItem()" style="color:var(--danger);display:none">Delete</button>
+      <button class="btn-secondary" onclick="closeModal('modal-price-guide-item')">Cancel</button>
+      <button class="btn-primary" onclick="savePriceGuideItem()">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxs1VO_Ai8H7d1DulAOZqHQfGZT3fOidy1AKX8BGsSBQpGdLYuNwDfFyZnnnTy5aJrP/exec';
@@ -983,6 +1263,49 @@ const IRS_RATE = 0.70;
 const DEFAULT_CATS = ['Tools & Equipment','Fuel/Mileage','Materials','Insurance','Platform Fees (Angi)','Advertising','Subcontractors','Other'];
 const PAYMENT_METHODS = ['Cash','Check','Venmo','Cash App'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const PG_UNITS = ['flat','per hour','per sq ft','per door','per window','per fixture','per outlet','per room','per board','per post','per linear ft'];
+const DEFAULT_PRICE_GUIDE = [
+  {id:'pg1', name:'General Handyman (hourly)',         minPrice:65,  maxPrice:95,  unit:'per hour'},
+  {id:'pg2', name:'Trip / Service Call Fee',           minPrice:50,  maxPrice:75,  unit:'flat'},
+  {id:'pg3', name:'Emergency / After-Hours Premium',   minPrice:50,  maxPrice:100, unit:'flat'},
+  {id:'pg4', name:'Door Install (interior)',            minPrice:100, maxPrice:175, unit:'per door'},
+  {id:'pg5', name:'Door Install (exterior)',            minPrice:175, maxPrice:300, unit:'per door'},
+  {id:'pg6', name:'Door Lock / Deadbolt Install',       minPrice:50,  maxPrice:90,  unit:'per door'},
+  {id:'pg7', name:'Door Weatherstripping',              minPrice:40,  maxPrice:75,  unit:'per door'},
+  {id:'pg8', name:'Window Screen Repair / Replace',     minPrice:35,  maxPrice:65,  unit:'per window'},
+  {id:'pg9', name:'Window Caulking',                    minPrice:20,  maxPrice:40,  unit:'per window'},
+  {id:'pg10',name:'Drywall Patch (small, <6")',          minPrice:75,  maxPrice:125, unit:'flat'},
+  {id:'pg11',name:'Drywall Patch (large, >6")',          minPrice:150, maxPrice:300, unit:'flat'},
+  {id:'pg12',name:'Drywall Texture Matching',            minPrice:75,  maxPrice:150, unit:'flat'},
+  {id:'pg13',name:'Interior Painting (per room)',        minPrice:200, maxPrice:450, unit:'per room'},
+  {id:'pg14',name:'Interior Paint Touch-Up',             minPrice:75,  maxPrice:150, unit:'flat'},
+  {id:'pg15',name:'Exterior Trim Painting',              minPrice:150, maxPrice:350, unit:'flat'},
+  {id:'pg16',name:'Cabinet Painting (kitchen)',          minPrice:400, maxPrice:800, unit:'flat'},
+  {id:'pg17',name:'Faucet Install / Replace',            minPrice:100, maxPrice:175, unit:'per fixture'},
+  {id:'pg18',name:'Toilet Repair (flapper/valve)',       minPrice:75,  maxPrice:125, unit:'per fixture'},
+  {id:'pg19',name:'Toilet Install',                      minPrice:150, maxPrice:250, unit:'per fixture'},
+  {id:'pg20',name:'Garbage Disposal Install',            minPrice:125, maxPrice:200, unit:'flat'},
+  {id:'pg21',name:'Under-Sink Shutoff Valve Replace',    minPrice:75,  maxPrice:125, unit:'per fixture'},
+  {id:'pg22',name:'Caulking (tub/shower/sink)',           minPrice:60,  maxPrice:120, unit:'flat'},
+  {id:'pg23',name:'Outlet / Switch Replace',             minPrice:50,  maxPrice:85,  unit:'per outlet'},
+  {id:'pg24',name:'Ceiling Fan Install',                 minPrice:100, maxPrice:200, unit:'per fixture'},
+  {id:'pg25',name:'Light Fixture Install',               minPrice:75,  maxPrice:150, unit:'per fixture'},
+  {id:'pg26',name:'GFCI Outlet Install',                 minPrice:60,  maxPrice:100, unit:'per outlet'},
+  {id:'pg27',name:'Smoke / CO Detector Install',         minPrice:35,  maxPrice:65,  unit:'per fixture'},
+  {id:'pg28',name:'LVP / Laminate Install',              minPrice:2,   maxPrice:4,   unit:'per sq ft'},
+  {id:'pg29',name:'Tile Install (floor)',                 minPrice:5,   maxPrice:10,  unit:'per sq ft'},
+  {id:'pg30',name:'Grout Repair / Regrouting',           minPrice:75,  maxPrice:200, unit:'flat'},
+  {id:'pg31',name:'Carpet Repair / Patch',               minPrice:75,  maxPrice:175, unit:'flat'},
+  {id:'pg32',name:'Hardwood Floor Repair',               minPrice:100, maxPrice:250, unit:'flat'},
+  {id:'pg33',name:'Furniture Assembly (simple)',         minPrice:50,  maxPrice:100, unit:'flat'},
+  {id:'pg34',name:'Furniture Assembly (complex)',        minPrice:100, maxPrice:200, unit:'flat'},
+  {id:'pg35',name:'TV Wall Mount Install',               minPrice:75,  maxPrice:150, unit:'flat'},
+  {id:'pg36',name:'Fence Board Replace',                 minPrice:25,  maxPrice:50,  unit:'per board'},
+  {id:'pg37',name:'Fence Post Reset',                    minPrice:75,  maxPrice:150, unit:'per post'},
+  {id:'pg38',name:'Gutter Cleaning',                     minPrice:100, maxPrice:200, unit:'flat'},
+  {id:'pg39',name:'Pressure Washing (per hour)',         minPrice:75,  maxPrice:100, unit:'per hour'},
+  {id:'pg40',name:'Caulking / Sealant',                  minPrice:2,   maxPrice:4,   unit:'per linear ft'},
+];
 
 // ─── IN-MEMORY CACHE ─────────────────────────────────────────────────────────
 let _entries = [];
@@ -994,6 +1317,12 @@ let _settings = { pin: '1234', defaultMarkup: 20 };
 let _hasOlderEntries = false;
 let _oldestLoadedDate = null;
 let _dataLoaded = false;
+let _quotes = [];
+let _priceGuide = [...DEFAULT_PRICE_GUIDE];
+let _quotesLoaded = false;
+let _currentQuoteId = null;
+let _quoteFilter = 'all';
+let _selectedPayMethod = null;
 
 // ─── PIN CACHE (localStorage, available before data loads) ───────────────────
 function getPinCache() { try { return localStorage.getItem('as_pin_cache') || '1234'; } catch(e) { return '1234'; } }
@@ -1021,6 +1350,7 @@ async function loadInitialData() {
   _categories = (data.categories && data.categories.length) ? data.categories : [...DEFAULT_CATS];
   _vendors    = data.vendors    || [];
   _settings   = data.settings   || { pin: '1234', defaultMarkup: 20 };
+  _priceGuide = (data.priceGuide && data.priceGuide.length) ? data.priceGuide : [...DEFAULT_PRICE_GUIDE];
   _hasOlderEntries = data.hasOlder || false;
   _oldestLoadedDate = _entries.length ? _entries[_entries.length - 1].date : null;
   _dataLoaded = true;
@@ -1116,9 +1446,11 @@ function showScreen(id) {
   if (id === 'screen-reports') refreshReports();
   if (id === 'screen-history') refreshHistory();
   if (id === 'screen-settings') refreshSettings();
+  if (id === 'screen-quotes') refreshQuotesList();
+  if (id === 'screen-quote-new') initNewQuoteForm();
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const navMap = { 'screen-home': 0, 'screen-reports': 1, 'screen-history': 2, 'screen-settings': 3 };
-  const screens = ['screen-home','screen-reports','screen-history','screen-settings'];
+  const navMap = { 'screen-home':0, 'screen-reports':1, 'screen-history':2, 'screen-quotes':3, 'screen-settings':4, 'screen-quote-new':3, 'screen-quote-detail':3 };
+  const screens = ['screen-home','screen-reports','screen-history','screen-quotes','screen-settings'];
   if (screens.includes(id)) {
     document.querySelectorAll('#' + id + ' .nav-btn')[navMap[id]]?.classList.add('active');
   }
@@ -1996,6 +2328,7 @@ function refreshSettings() {
   if (jmc) { jmc.innerHTML = '<option value="">No customer</option>' + _customers.map(c => `<option value="${c}">${c}</option>`).join(''); }
   document.getElementById('category-chips').innerHTML = _categories.map((c, i) =>
     `<div class="chip">${c}<i class="ti ti-x" onclick="removeCategory(${i})"></i></div>`).join('');
+  refreshPriceGuideSettings();
 }
 
 function savePin() {
@@ -2078,6 +2411,8 @@ function clearAllData() {
   _entries = []; _customers = []; _jobs = []; _categories = [...DEFAULT_CATS];
   _vendors = []; _settings = { pin: '1234', defaultMarkup: 20 };
   _hasOlderEntries = false; _oldestLoadedDate = null; _dataLoaded = false;
+  _quotes = []; _priceGuide = [...DEFAULT_PRICE_GUIDE]; _quotesLoaded = false;
+  _currentQuoteId = null;
   try { localStorage.removeItem('as_pin_cache'); localStorage.removeItem('as_sync_queue'); } catch(e) {}
   closeModal('modal-clear');
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -2365,6 +2700,516 @@ function filterVendorSuggestions(query) {
     btn.style.display = (!q || label.includes(q)) ? 'flex' : 'none';
     btn.classList.toggle('sel', btn.textContent.trim() === query);
   });
+}
+
+// ─── QUOTES ───────────────────────────────────────────────────────────────────
+function $f(n) { return '$' + (parseFloat(n) || 0).toFixed(2); }
+
+async function loadQuotesData() {
+  if (_quotesLoaded) return;
+  try {
+    const data = await apiGet({ action: 'getQuotes' });
+    _quotes = data.quotes || [];
+    if (data.priceGuide && data.priceGuide.length) _priceGuide = data.priceGuide;
+    _quotesLoaded = true;
+  } catch(e) {
+    showToast('Could not load quotes', 'error');
+  }
+}
+
+function recalcQuoteStatus(quote) {
+  const total = (quote.lineItems || []).reduce((s, i) => s + (i.total || 0), 0);
+  quote.totalAmount = total;
+  quote.amountPaid = (quote.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+  if (total > 0 && quote.amountPaid >= total && quote.status !== 'draft') quote.status = 'paid';
+}
+
+async function saveQuoteOptimistic(quote) {
+  recalcQuoteStatus(quote);
+  const idx = _quotes.findIndex(q => q.id === quote.id);
+  const old = idx >= 0 ? { ..._quotes[idx] } : null;
+  if (idx >= 0) _quotes[idx] = quote; else _quotes.unshift(quote);
+  if (!navigator.onLine) { queueOffline(idx >= 0 ? 'updateQuote' : 'addQuote', { quote }); return; }
+  try {
+    await apiPost({ action: idx >= 0 ? 'updateQuote' : 'addQuote', quote });
+  } catch(e) {
+    if (old) _quotes[idx] = old; else _quotes.shift();
+    showToast('Sync failed', 'error');
+  }
+}
+
+async function deleteQuoteById(id) {
+  const idx = _quotes.findIndex(q => q.id === id);
+  if (idx === -1) return;
+  const removed = _quotes.splice(idx, 1)[0];
+  showScreen('screen-quotes');
+  if (!navigator.onLine) { queueOffline('deleteQuote', { id }); return; }
+  try {
+    await apiPost({ action: 'deleteQuote', id });
+  } catch(e) {
+    _quotes.splice(idx, 0, removed);
+    showToast('Delete failed', 'error');
+  }
+}
+
+async function recordPayment(quoteId, { amount, payMethod, date }) {
+  const quote = _quotes.find(q => q.id === quoteId);
+  if (!quote) return;
+  const payId = Date.now().toString() + '_' + (quote.payments || []).length;
+  const entryId = Date.now().toString() + 'pe';
+  const payment = { id: payId, date, amount, payMethod, entryId };
+  const entry = {
+    id: entryId, type: 'income', date,
+    amount, payMethod,
+    customer: quote.customer, jobId: quote.jobId || '',
+    description: 'Payment for: ' + quote.title,
+    category: '', vendor: '', reimbursable: 'No', markupPct: 0, miles: 0
+  };
+  if (!quote.payments) quote.payments = [];
+  quote.payments.push(payment);
+  recalcQuoteStatus(quote);
+  _entries.unshift(entry);
+  const wasCompleted = quote.status !== 'paid';
+  await saveQuoteOptimistic(quote);
+  if (!navigator.onLine) { queueOffline('addEntry', { entry }); }
+  else {
+    apiPost({ action: 'addEntry', entry }).catch(() => showToast('Entry sync failed', 'error'));
+  }
+  if (quote.status === 'paid' && wasCompleted) showToast('Quote fully paid!', 'success');
+  else showToast('Payment recorded', 'success');
+  renderQuoteDetail();
+  refreshHome();
+}
+
+// ─── QUOTES LIST ──────────────────────────────────────────────────────────────
+async function refreshQuotesList() {
+  if (!_quotesLoaded) {
+    document.getElementById('quotes-list').innerHTML = '<div class="empty-state"><i class="ti ti-loader-2"></i><p>Loading quotes…</p></div>';
+    await loadQuotesData();
+  }
+  const filter = _quoteFilter || 'all';
+  let list = [..._quotes].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  if (filter === 'draft') list = list.filter(q => q.status === 'draft');
+  else if (filter === 'active') list = list.filter(q => q.status === 'finalized' || q.status === 'completed');
+  else if (filter === 'paid') list = list.filter(q => q.status === 'paid');
+  const el = document.getElementById('quotes-list');
+  if (!list.length) {
+    el.innerHTML = '<div class="empty-state"><i class="ti ti-file-invoice"></i><p>No quotes yet. Tap + to create one.</p></div>';
+    return;
+  }
+  el.innerHTML = list.map(quoteCardHTML).join('');
+}
+
+function quoteCardHTML(q) {
+  const total = (q.lineItems || []).reduce((s, i) => s + (i.total || 0), 0);
+  const paid = (q.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+  const balance = total - paid;
+  const dateStr = q.date ? new Date(q.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+  const balHtml = balance > 0.001 && q.status !== 'draft' ? `<div class="quote-bal">Due: ${$f(balance)}</div>` : '';
+  return `<div class="quote-item" onclick="openQuoteDetail('${q.id}')">
+    <div class="quote-icon"><i class="ti ti-file-invoice"></i></div>
+    <div class="quote-info">
+      <div class="quote-title">${q.title || 'Untitled Quote'}</div>
+      <div class="quote-sub"><span class="tag ${q.status}">${q.status}</span>${q.customer ? ' · ' + q.customer : ''}${dateStr ? ' · ' + dateStr : ''}</div>
+    </div>
+    <div class="quote-right">
+      <div class="quote-amt">${total > 0 ? $f(total) : '—'}</div>
+      ${balHtml}
+    </div>
+  </div>`;
+}
+
+function setQuoteFilter(filter, btn) {
+  _quoteFilter = filter;
+  document.querySelectorAll('#quote-filter-tabs .filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  refreshQuotesList();
+}
+
+// ─── NEW QUOTE FORM ───────────────────────────────────────────────────────────
+function initNewQuoteForm() {
+  const custEl = document.getElementById('qn-customer');
+  custEl.innerHTML = '<option value="">Select customer…</option>' +
+    _customers.filter(c => c !== 'No customer').map(c => `<option value="${c}">${c}</option>`).join('');
+  document.getElementById('qn-job').innerHTML = '<option value="">No specific job</option>';
+  document.getElementById('qn-date').value = todayStr();
+  document.getElementById('qn-title').value = '';
+  document.getElementById('qn-notes').value = '';
+}
+
+function updateQuoteNewJobs() {
+  const cust = document.getElementById('qn-customer').value;
+  const jobs = cust ? _jobs.filter(j => j.customer === cust) : _jobs;
+  document.getElementById('qn-job').innerHTML = '<option value="">No specific job</option>' +
+    jobs.map(j => `<option value="${j.id}">${j.name}${j.location ? ' — '+j.location : ''}</option>`).join('');
+}
+
+async function createNewQuote() {
+  const title = document.getElementById('qn-title').value.trim();
+  const customer = document.getElementById('qn-customer').value;
+  const jobId = document.getElementById('qn-job').value;
+  const date = document.getElementById('qn-date').value;
+  const notes = document.getElementById('qn-notes').value.trim();
+  if (!customer) { alert('Please select a customer.'); return; }
+  const quote = {
+    id: Date.now().toString(), status: 'draft',
+    customer, jobId, title: title || customer + ' Quote',
+    date: date ? localDateToISO(date) : new Date().toISOString(),
+    notes, completedDate: '', totalAmount: 0, amountPaid: 0,
+    lineItems: [], payments: []
+  };
+  _quotes.unshift(quote);
+  _quotesLoaded = true;
+  await apiPost({ action: 'addQuote', quote }).catch(() => showToast('Sync failed', 'error'));
+  openQuoteDetail(quote.id);
+}
+
+// ─── QUOTE DETAIL ─────────────────────────────────────────────────────────────
+function openQuoteDetail(id) {
+  _currentQuoteId = id;
+  showScreen('screen-quote-detail');
+  renderQuoteDetail();
+}
+
+function renderQuoteDetail() {
+  const quote = _quotes.find(q => q.id === _currentQuoteId);
+  if (!quote) return;
+  const isDraft = quote.status === 'draft';
+  const total = (quote.lineItems || []).reduce((s, i) => s + (i.total || 0), 0);
+  const paid = (quote.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+  const balance = total - paid;
+  document.getElementById('qd-title').textContent = quote.title || 'Quote';
+  document.getElementById('qd-edit-btn').style.display = isDraft ? 'flex' : 'none';
+
+  let html = '';
+  // Header card
+  html += `<div class="detail-section">
+    <div class="detail-card">
+      <div class="detail-row"><span class="lbl">Status</span><span class="val"><span class="tag ${quote.status}">${quote.status}</span></span></div>
+      <div class="detail-row"><span class="lbl">Customer</span><span class="val">${quote.customer || '—'}</span></div>
+      ${quote.jobId ? `<div class="detail-row"><span class="lbl">Job</span><span class="val">${jobName(quote.jobId)}</span></div>` : ''}
+      <div class="detail-row"><span class="lbl">Date</span><span class="val">${quote.date ? new Date(quote.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'}</span></div>
+      ${quote.completedDate ? `<div class="detail-row"><span class="lbl">Completed</span><span class="val">${new Date(quote.completedDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span></div>` : ''}
+      ${quote.notes ? `<div class="detail-row"><span class="lbl">Notes</span><span class="val" style="max-width:60%;text-align:right;white-space:pre-wrap">${quote.notes}</span></div>` : ''}
+    </div>
+  </div>`;
+
+  // Line items
+  html += `<div class="detail-section" style="margin-top:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)">Line Items</span>
+      ${isDraft ? `<button class="btn-secondary" style="padding:6px 12px;font-size:13px" onclick="openAddLineItemModal()"><i class="ti ti-plus"></i> Add item</button>` : ''}
+    </div>
+    <div class="detail-card">
+      ${(quote.lineItems || []).length === 0 ? '<p style="text-align:center;color:var(--text3);font-size:14px;padding:12px 0">No items yet</p>' :
+        (quote.lineItems || []).map(item => `
+          <div class="line-item-row">
+            <div style="flex:1">
+              <div class="line-item-desc">${item.description}</div>
+              <div class="line-item-meta">${item.qty} × ${$f(item.unitPrice)} ${item.unit ? '(' + item.unit + ')' : ''}</div>
+            </div>
+            <div class="line-item-total">${$f(item.total)}</div>
+            ${isDraft ? `<button class="line-item-del" onclick="removeLineItem('${quote.id}','${item.id}')"><i class="ti ti-x"></i></button>` : ''}
+          </div>`).join('')}
+    </div>
+  </div>`;
+
+  // Totals
+  html += `<div class="detail-section" style="margin-top:12px">
+    <div class="totals-card">
+      <div class="totals-row grand"><span>Total</span><span>${$f(total)}</span></div>
+      ${paid > 0 ? `<div class="totals-row"><span>Paid</span><span style="color:var(--success)">${$f(paid)}</span></div>` : ''}
+      ${balance > 0.001 ? `<div class="totals-row balance"><span>Balance due</span><span>${$f(balance)}</span></div>` : ''}
+    </div>
+  </div>`;
+
+  // Payments
+  if ((quote.payments || []).length > 0) {
+    html += `<div class="detail-section" style="margin-top:16px">
+      <div style="margin-bottom:8px"><span style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)">Payments</span></div>
+      <div class="detail-card">
+        ${quote.payments.map(p => `
+          <div class="payment-row">
+            <div>
+              <div class="payment-info">${p.date ? new Date(p.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'}</div>
+              <div class="payment-method">${p.payMethod}</div>
+            </div>
+            <div class="payment-amt">${$f(p.amount)}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  html += '<div style="height:16px"></div>';
+  document.getElementById('qd-body').innerHTML = html;
+
+  // Action bar
+  let actions = '';
+  if (quote.status === 'draft') {
+    actions = `<button class="btn-primary" style="flex:1" onclick="finalizeQuote('${quote.id}')">Finalize Quote</button>
+      <button class="btn-secondary" style="color:var(--danger)" onclick="confirmDeleteQuote('${quote.id}')"><i class="ti ti-trash"></i></button>`;
+  } else if (quote.status === 'finalized') {
+    actions = `<button class="btn-secondary" style="flex:1" onclick="markCompleted('${quote.id}')">Mark Completed</button>
+      <button class="btn-primary" style="flex:1" onclick="openRecordPaymentModal('${quote.id}')">Record Payment</button>`;
+  } else if (quote.status === 'completed') {
+    actions = `<button class="btn-primary" style="flex:1" onclick="openRecordPaymentModal('${quote.id}')"><i class="ti ti-cash"></i> Record Payment</button>`;
+  } else if (quote.status === 'paid') {
+    actions = `<div style="flex:1;text-align:center;color:var(--success);font-weight:600;font-size:14px"><i class="ti ti-circle-check"></i> Fully Paid</div>`;
+  }
+  document.getElementById('qd-actions').innerHTML = actions;
+}
+
+function finalizeQuote(id) {
+  if (!confirm('Lock this quote? Line items cannot be edited after finalizing.')) return;
+  const quote = _quotes.find(q => q.id === id);
+  if (!quote) return;
+  quote.status = 'finalized';
+  saveQuoteOptimistic(quote);
+  renderQuoteDetail();
+  showToast('Quote finalized', 'success');
+}
+
+function markCompleted(id) {
+  const quote = _quotes.find(q => q.id === id);
+  if (!quote) return;
+  quote.status = 'completed';
+  quote.completedDate = new Date().toISOString();
+  saveQuoteOptimistic(quote);
+  renderQuoteDetail();
+  showToast('Work marked as completed', 'success');
+}
+
+function confirmDeleteQuote(id) {
+  if (!confirm('Delete this quote? This cannot be undone.')) return;
+  deleteQuoteById(id);
+}
+
+async function removeLineItem(quoteId, itemId) {
+  const quote = _quotes.find(q => q.id === quoteId);
+  if (!quote) return;
+  quote.lineItems = (quote.lineItems || []).filter(i => i.id !== itemId);
+  recalcQuoteStatus(quote);
+  await saveQuoteOptimistic(quote);
+  renderQuoteDetail();
+}
+
+// ─── ADD LINE ITEM MODAL ──────────────────────────────────────────────────────
+let _selectedGuideItem = null;
+
+function openAddLineItemModal() {
+  _selectedGuideItem = null;
+  document.getElementById('guide-search').value = '';
+  document.getElementById('li-desc').value = '';
+  document.getElementById('li-qty').value = '1';
+  document.getElementById('li-price').value = '';
+  document.getElementById('li-total').value = '';
+  document.getElementById('guide-selected-hint').style.display = 'none';
+  renderGuideList(_priceGuide);
+  openModal('modal-add-line-item');
+}
+
+function renderGuideList(items) {
+  const el = document.getElementById('guide-list-container');
+  if (!items.length) { el.innerHTML = '<div style="padding:12px;text-align:center;color:var(--text3);font-size:13px">No items found</div>'; return; }
+  el.innerHTML = items.map(item => `
+    <div class="guide-item" onclick="selectGuideItem('${item.id}')">
+      <div style="flex:1">
+        <div class="guide-item-name">${item.name}</div>
+        <div class="guide-item-unit">${item.unit}</div>
+      </div>
+      <div class="guide-item-price">${$f(item.minPrice)} – ${$f(item.maxPrice)}</div>
+    </div>`).join('');
+}
+
+function filterGuideList(query) {
+  const q = query.toLowerCase().trim();
+  const filtered = q ? _priceGuide.filter(i => i.name.toLowerCase().includes(q)) : _priceGuide;
+  renderGuideList(filtered);
+}
+
+function selectGuideItem(pgId) {
+  _selectedGuideItem = _priceGuide.find(i => i.id === pgId);
+  if (!_selectedGuideItem) return;
+  const mid = ((_selectedGuideItem.minPrice + _selectedGuideItem.maxPrice) / 2);
+  document.getElementById('li-desc').value = _selectedGuideItem.name;
+  document.getElementById('li-price').value = mid.toFixed(2);
+  document.getElementById('li-qty').value = '1';
+  calcLineItemTotal();
+  const hint = document.getElementById('guide-selected-hint');
+  hint.textContent = 'Market rate: ' + $f(_selectedGuideItem.minPrice) + ' – ' + $f(_selectedGuideItem.maxPrice) + ' ' + _selectedGuideItem.unit;
+  hint.style.display = 'block';
+  // highlight selected row
+  document.querySelectorAll('#guide-list-container .guide-item').forEach(el => {
+    el.style.background = '';
+    el.style.borderRadius = '';
+  });
+  event.currentTarget.style.background = 'var(--brand-light)';
+  event.currentTarget.style.borderRadius = '8px';
+}
+
+function calcLineItemTotal() {
+  const qty = parseFloat(document.getElementById('li-qty').value) || 0;
+  const price = parseFloat(document.getElementById('li-price').value) || 0;
+  document.getElementById('li-total').value = (qty * price).toFixed(2);
+}
+
+function confirmAddLineItem() {
+  const desc = document.getElementById('li-desc').value.trim();
+  const qty = parseFloat(document.getElementById('li-qty').value) || 1;
+  const unitPrice = parseFloat(document.getElementById('li-price').value) || 0;
+  const total = qty * unitPrice;
+  if (!desc) { alert('Please enter a description.'); return; }
+  if (unitPrice <= 0) { alert('Please enter a unit price.'); return; }
+  const item = {
+    id: Date.now().toString(),
+    description: desc,
+    qty,
+    unitPrice,
+    total,
+    unit: _selectedGuideItem ? _selectedGuideItem.unit : ''
+  };
+  const quote = _quotes.find(q => q.id === _currentQuoteId);
+  if (!quote) return;
+  if (!quote.lineItems) quote.lineItems = [];
+  quote.lineItems.push(item);
+  recalcQuoteStatus(quote);
+  saveQuoteOptimistic(quote);
+  closeModal('modal-add-line-item');
+  renderQuoteDetail();
+}
+
+// ─── RECORD PAYMENT MODAL ─────────────────────────────────────────────────────
+function openRecordPaymentModal(quoteId) {
+  _currentQuoteId = quoteId;
+  _selectedPayMethod = null;
+  const quote = _quotes.find(q => q.id === quoteId);
+  const total = quote ? (quote.lineItems || []).reduce((s, i) => s + (i.total || 0), 0) : 0;
+  const paid = quote ? (quote.payments || []).reduce((s, p) => s + (p.amount || 0), 0) : 0;
+  const balance = Math.max(0, total - paid);
+  document.getElementById('pay-amount').value = balance > 0 ? balance.toFixed(2) : '';
+  document.getElementById('pay-date').value = todayStr();
+  document.querySelectorAll('#pay-method-choices .choice-btn').forEach(b => b.classList.remove('sel'));
+  openModal('modal-record-payment');
+}
+
+function selectPayMethod(method) {
+  _selectedPayMethod = method;
+  document.querySelectorAll('#pay-method-choices .choice-btn').forEach(b => {
+    b.classList.toggle('sel', b.textContent.trim() === method);
+  });
+}
+
+async function confirmRecordPayment() {
+  const amount = parseFloat(document.getElementById('pay-amount').value);
+  const dateVal = document.getElementById('pay-date').value;
+  if (!amount || amount <= 0) { alert('Please enter a valid amount.'); return; }
+  if (!_selectedPayMethod) { alert('Please select a payment method.'); return; }
+  const date = dateVal ? localDateToISO(dateVal) : new Date().toISOString();
+  closeModal('modal-record-payment');
+  await recordPayment(_currentQuoteId, { amount, payMethod: _selectedPayMethod, date });
+}
+
+// ─── EDIT QUOTE INFO MODAL ────────────────────────────────────────────────────
+function openEditQuoteInfo() {
+  const quote = _quotes.find(q => q.id === _currentQuoteId);
+  if (!quote) return;
+  document.getElementById('eqi-title').value = quote.title || '';
+  document.getElementById('eqi-notes').value = quote.notes || '';
+  const custEl = document.getElementById('eqi-customer');
+  custEl.innerHTML = '<option value="">Select customer…</option>' +
+    _customers.filter(c => c !== 'No customer').map(c => `<option value="${c}" ${c === quote.customer ? 'selected' : ''}>${c}</option>`).join('');
+  updateEqiJobs(quote.customer, quote.jobId);
+  openModal('modal-edit-quote-info');
+}
+
+function updateEqiJobs(prefCustomer, prefJobId) {
+  const cust = prefCustomer || document.getElementById('eqi-customer').value;
+  const jobs = cust ? _jobs.filter(j => j.customer === cust) : _jobs;
+  document.getElementById('eqi-job').innerHTML = '<option value="">No specific job</option>' +
+    jobs.map(j => `<option value="${j.id}" ${j.id === prefJobId ? 'selected' : ''}>${j.name}${j.location ? ' — '+j.location : ''}</option>`).join('');
+}
+
+async function saveQuoteInfo() {
+  const quote = _quotes.find(q => q.id === _currentQuoteId);
+  if (!quote) return;
+  const title = document.getElementById('eqi-title').value.trim();
+  const customer = document.getElementById('eqi-customer').value;
+  if (!customer) { alert('Please select a customer.'); return; }
+  quote.title = title || customer + ' Quote';
+  quote.customer = customer;
+  quote.jobId = document.getElementById('eqi-job').value;
+  quote.notes = document.getElementById('eqi-notes').value.trim();
+  await saveQuoteOptimistic(quote);
+  closeModal('modal-edit-quote-info');
+  renderQuoteDetail();
+}
+
+// ─── PRICE GUIDE SETTINGS ─────────────────────────────────────────────────────
+function refreshPriceGuideSettings() {
+  const el = document.getElementById('price-guide-list');
+  if (!el) return;
+  if (!_priceGuide.length) {
+    el.innerHTML = '<p style="padding:8px 0;color:var(--text3);font-size:13px">No items. Add some below.</p>';
+    return;
+  }
+  el.innerHTML = _priceGuide.map(item => `
+    <div class="chip" onclick="openEditPriceGuideItem('${item.id}')" style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 12px;margin:4px 0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm)">
+      <span style="flex:1;font-size:13px;font-weight:500">${item.name}</span>
+      <span style="font-size:12px;color:var(--text2)">${$f(item.minPrice)}–${$f(item.maxPrice)} <span style="color:var(--text3)">${item.unit}</span></span>
+      <i class="ti ti-chevron-right" style="color:var(--text3);font-size:14px"></i>
+    </div>`).join('');
+}
+
+function openAddPriceGuideItem() {
+  document.getElementById('pg-modal-title').textContent = 'Add Price Guide Item';
+  document.getElementById('pg-edit-id').value = '';
+  document.getElementById('pg-name').value = '';
+  document.getElementById('pg-min').value = '';
+  document.getElementById('pg-max').value = '';
+  document.getElementById('pg-unit').value = 'flat';
+  document.getElementById('pg-delete-btn').style.display = 'none';
+  openModal('modal-price-guide-item');
+}
+
+function openEditPriceGuideItem(id) {
+  const item = _priceGuide.find(i => i.id === id);
+  if (!item) return;
+  document.getElementById('pg-modal-title').textContent = 'Edit Price Guide Item';
+  document.getElementById('pg-edit-id').value = id;
+  document.getElementById('pg-name').value = item.name;
+  document.getElementById('pg-min').value = item.minPrice;
+  document.getElementById('pg-max').value = item.maxPrice;
+  document.getElementById('pg-unit').value = item.unit || 'flat';
+  document.getElementById('pg-delete-btn').style.display = 'inline-flex';
+  openModal('modal-price-guide-item');
+}
+
+async function savePriceGuideItem() {
+  const id = document.getElementById('pg-edit-id').value;
+  const name = document.getElementById('pg-name').value.trim();
+  const minPrice = parseFloat(document.getElementById('pg-min').value) || 0;
+  const maxPrice = parseFloat(document.getElementById('pg-max').value) || 0;
+  const unit = document.getElementById('pg-unit').value;
+  if (!name) { alert('Please enter a name.'); return; }
+  if (id) {
+    const idx = _priceGuide.findIndex(i => i.id === id);
+    if (idx >= 0) _priceGuide[idx] = { id, name, minPrice, maxPrice, unit };
+  } else {
+    _priceGuide.push({ id: 'pg_' + Date.now(), name, minPrice, maxPrice, unit });
+  }
+  closeModal('modal-price-guide-item');
+  refreshSettings();
+  apiPost({ action: 'savePriceGuide', priceGuide: _priceGuide }).catch(() => showToast('Sync failed', 'error'));
+}
+
+async function deletePriceGuideItem() {
+  const id = document.getElementById('pg-edit-id').value;
+  if (!id) return;
+  if (!confirm('Delete this price guide item?')) return;
+  _priceGuide = _priceGuide.filter(i => i.id !== id);
+  closeModal('modal-price-guide-item');
+  refreshSettings();
+  apiPost({ action: 'savePriceGuide', priceGuide: _priceGuide }).catch(() => showToast('Sync failed', 'error'));
 }
 
 </script>
