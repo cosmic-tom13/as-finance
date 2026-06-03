@@ -576,7 +576,7 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
       <div class="pin-dot" id="pd3"></div>
     </div>
     <p class="pin-error" id="pin-error"></p>
-    <div class="pin-pad">
+    <div class="pin-pad" id="pin-pad-wrap">
       <button class="pin-key" onclick="pinTap('1')">1</button>
       <button class="pin-key" onclick="pinTap('2')">2</button>
       <button class="pin-key" onclick="pinTap('3')">3</button>
@@ -591,6 +591,18 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
       <button class="pin-key del" onclick="pinTap('del')"><i class="ti ti-backspace"></i></button>
     </div>
     <p class="pin-hint" id="pin-hint"></p>
+    <button id="pin-biometric-btn" onclick="tryBiometricLogin()"
+      style="display:none;margin-top:22px;background:rgba(255,255,255,0.15);
+             border:1px solid rgba(255,255,255,0.25);color:#fff;padding:14px 28px;
+             border-radius:14px;font-size:15px;font-weight:500;font-family:var(--font);
+             cursor:pointer;align-items:center;gap:10px;position:relative;z-index:1">
+      <i class="ti ti-fingerprint" style="font-size:22px"></i>Use biometrics
+    </button>
+    <button id="pin-use-pin-btn" onclick="showPinPad()"
+      style="display:none;margin-top:10px;background:none;border:none;color:rgba(255,255,255,0.55);
+             font-size:13px;font-family:var(--font);cursor:pointer;position:relative;z-index:1;padding:6px">
+      Use PIN instead
+    </button>
   </div>
 </div>
 
@@ -811,6 +823,9 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
         </div>
         <div class="settings-row" onclick="openModal('modal-markup')">
           <i class="ti ti-percentage s-icon"></i><span class="s-label">Default markup</span><span class="s-value" id="s-markup-val">20%</span><i class="ti ti-chevron-right s-arr"></i>
+        </div>
+        <div class="settings-row" id="s-biometric-row">
+          <i class="ti ti-fingerprint s-icon"></i><span class="s-label">Biometric login</span><span class="s-value" id="s-biometric-val">Not set up</span><i class="ti ti-chevron-right s-arr"></i>
         </div>
       </div>
     </div>
@@ -1112,6 +1127,9 @@ function showScreen(id) {
 // ─── PIN ──────────────────────────────────────────────────────────────────────
 (function initPin() {
   if (getPinCache() === '1234') document.getElementById('pin-hint').textContent = 'Default PIN is 1234';
+  updateBiometricBtn();
+  // Auto-trigger biometric prompt on open if registered
+  if (getBioCredId()) setTimeout(() => tryBiometricLogin(), 400);
 })();
 
 function pinTap(k) {
@@ -1147,6 +1165,125 @@ function pinTap(k) {
 function updateDots() {
   for (let i = 0; i < 4; i++)
     document.getElementById('pd' + i).classList.toggle('filled', i < pinBuffer.length);
+}
+
+// ─── BIOMETRICS ───────────────────────────────────────────────────────────────
+function bufToB64(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)));
+}
+function b64ToBuf(b64) {
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return arr.buffer;
+}
+function getBioCredId()   { try { return localStorage.getItem('as_bio_cred'); } catch(e) { return null; } }
+function setBioCredId(id) { try { localStorage.setItem('as_bio_cred', id); } catch(e) {} }
+function clearBioCredId() { try { localStorage.removeItem('as_bio_cred'); } catch(e) {} }
+
+async function isBiometricsAvailable() {
+  if (!window.PublicKeyCredential) return false;
+  try { return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
+  catch(e) { return false; }
+}
+
+async function registerBiometrics() {
+  const rpId = window.location.hostname || 'localhost';
+  const cred = await navigator.credentials.create({
+    publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp: { name: 'AS Finance', id: rpId },
+      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'tommy', displayName: 'Tommy' },
+      pubKeyCredParams: [
+        { alg: -7,   type: 'public-key' },   // ES256
+        { alg: -257, type: 'public-key' }    // RS256 fallback
+      ],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+      timeout: 60000
+    }
+  });
+  setBioCredId(bufToB64(cred.rawId));
+}
+
+async function verifyBiometrics() {
+  const credId = getBioCredId();
+  if (!credId) throw new Error('No credential registered');
+  await navigator.credentials.get({
+    publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials: [{ id: b64ToBuf(credId), type: 'public-key' }],
+      userVerification: 'required',
+      timeout: 60000
+    }
+  });
+}
+
+function updateBiometricBtn() {
+  const bioBtn  = document.getElementById('pin-biometric-btn');
+  const pinBtn  = document.getElementById('pin-use-pin-btn');
+  const pad     = document.getElementById('pin-pad-wrap');
+  const hasCred = !!getBioCredId();
+  if (bioBtn) bioBtn.style.display = hasCred ? 'flex' : 'none';
+  if (pinBtn) pinBtn.style.display = hasCred ? 'block' : 'none';
+  if (pad)    pad.style.display    = hasCred ? 'none'  : 'grid';
+}
+
+function showPinPad() {
+  const pad    = document.getElementById('pin-pad-wrap');
+  const pinBtn = document.getElementById('pin-use-pin-btn');
+  const bioBtn = document.getElementById('pin-biometric-btn');
+  if (pad)    pad.style.display    = 'grid';
+  if (pinBtn) pinBtn.style.display = 'none';
+  if (bioBtn) bioBtn.style.display = 'none';
+}
+
+async function tryBiometricLogin() {
+  const bioBtn = document.getElementById('pin-biometric-btn');
+  const errEl  = document.getElementById('pin-error');
+  if (bioBtn) { bioBtn.disabled = true; bioBtn.innerHTML = '<i class="ti ti-loader-2"></i> Verifying…'; }
+  try {
+    await verifyBiometrics();
+    // Success — same flow as correct PIN
+    if (_dataLoaded) { showScreen('screen-home'); return; }
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-loading').classList.add('active');
+    try { await loadInitialData(); }
+    catch(e) { showToast('Could not reach server — working offline', 'error'); _dataLoaded = true; }
+    showScreen('screen-home');
+  } catch(e) {
+    if (bioBtn) {
+      bioBtn.disabled = false;
+      bioBtn.innerHTML = '<i class="ti ti-fingerprint" style="font-size:22px"></i>Use biometrics';
+    }
+    if (e.name === 'NotAllowedError') {
+      if (errEl) errEl.textContent = 'Biometric cancelled — use PIN below';
+    } else {
+      if (errEl) errEl.textContent = 'Biometric failed — use PIN below';
+    }
+    showPinPad();
+  }
+}
+
+async function setupBiometrics() {
+  const available = await isBiometricsAvailable();
+  if (!available) { showToast('No platform biometrics available on this device', 'error'); return; }
+  try {
+    await registerBiometrics();
+    showToast('Biometrics set up — you can now log in with your fingerprint', 'success');
+    updateBiometricBtn();
+    refreshSettings();
+  } catch(e) {
+    if (e.name !== 'NotAllowedError') showToast('Setup failed: ' + e.message, 'error');
+    else showToast('Setup cancelled', 'error');
+  }
+}
+
+function removeBiometrics() {
+  if (!confirm('Remove biometric login? You will use your PIN to sign in.')) return;
+  clearBioCredId();
+  updateBiometricBtn();
+  refreshSettings();
+  showToast('Biometrics removed', 'success');
 }
 
 // ─── DATE HELPERS ─────────────────────────────────────────────────────────────
@@ -1838,6 +1975,11 @@ async function deleteEntry(id) {
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────
 function refreshSettings() {
   document.getElementById('s-markup-val').textContent = (_settings.defaultMarkup || 20) + '%';
+  const hasCred = !!getBioCredId();
+  const bioVal = document.getElementById('s-biometric-val');
+  const bioRow = document.getElementById('s-biometric-row');
+  if (bioVal) bioVal.textContent = hasCred ? 'Enabled' : 'Not set up';
+  if (bioRow) bioRow.onclick = hasCred ? removeBiometrics : setupBiometrics;
   document.getElementById('customer-chips').innerHTML = _customers.map((c, i) =>
     `<div class="chip">${c}<i class="ti ti-x" onclick="removeCustomer(${i})"></i></div>`).join('') || '<span style="font-size:13px;color:var(--text3)">No customers yet</span>';
   document.getElementById('job-chips').innerHTML = _jobs.map((j, i) =>
