@@ -681,7 +681,20 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
       <button class="rtab active" onclick="setReportPeriod('week',this)">Week</button>
       <button class="rtab" onclick="setReportPeriod('month',this)">Month</button>
       <button class="rtab" onclick="setReportPeriod('ytd',this)">YTD</button>
-      <button class="rtab" onclick="setReportPeriod('all',this)">All time</button>
+      <button class="rtab" onclick="setReportPeriod('all',this)">All</button>
+      <button class="rtab" onclick="setReportPeriod('custom',this)">Custom</button>
+    </div>
+
+    <!-- Custom date range picker -->
+    <div id="r-custom-range" style="display:none;gap:10px;padding:10px 16px 0;align-items:flex-end">
+      <div style="flex:1">
+        <label class="filter-label" style="margin-bottom:5px">From</label>
+        <input type="date" id="r-date-from" oninput="applyCustomRange()" style="padding:10px 12px;font-size:14px">
+      </div>
+      <div style="flex:1">
+        <label class="filter-label" style="margin-bottom:5px">To</label>
+        <input type="date" id="r-date-to" oninput="applyCustomRange()" style="padding:10px 12px;font-size:14px">
+      </div>
     </div>
 
     <!-- Customer filter -->
@@ -1075,6 +1088,8 @@ let lastWizardType = 'income';
 let reportPeriod = 'month';
 let reportCustomer = '';
 let reportJob = '';
+let reportDateFrom = '';
+let reportDateTo = '';
 let currentDetailId = null;
 
 // ─── NAVIGATION ───────────────────────────────────────────────────────────────
@@ -1593,6 +1608,26 @@ function setReportPeriod(p, btn) {
   reportPeriod = p;
   document.querySelectorAll('.rtab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
+  const rangeEl = document.getElementById('r-custom-range');
+  if (rangeEl) rangeEl.style.display = p === 'custom' ? 'flex' : 'none';
+  if (p === 'custom') {
+    // Seed defaults: first of current month → today
+    if (!reportDateFrom) {
+      const now = new Date();
+      reportDateFrom = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-01';
+      reportDateTo = todayStr();
+    }
+    const fromEl = document.getElementById('r-date-from');
+    const toEl   = document.getElementById('r-date-to');
+    if (fromEl) fromEl.value = reportDateFrom;
+    if (toEl)   toEl.value   = reportDateTo;
+  }
+  refreshReports();
+}
+
+function applyCustomRange() {
+  reportDateFrom = document.getElementById('r-date-from')?.value || '';
+  reportDateTo   = document.getElementById('r-date-to')?.value   || '';
   refreshReports();
 }
 
@@ -1618,9 +1653,19 @@ function filterEntries(d) {
   return d.filter(e => {
     const dt = new Date(e.date);
     // period filter
-    if (reportPeriod === 'week' && (now - dt) / 86400000 > 7) return false;
+    if (reportPeriod === 'week'  && (now - dt) / 86400000 > 7) return false;
     if (reportPeriod === 'month' && (dt.getMonth() !== now.getMonth() || dt.getFullYear() !== now.getFullYear())) return false;
-    if (reportPeriod === 'ytd' && dt.getFullYear() !== now.getFullYear()) return false;
+    if (reportPeriod === 'ytd'   && dt.getFullYear() !== now.getFullYear()) return false;
+    if (reportPeriod === 'custom') {
+      if (reportDateFrom) {
+        const [fy, fm, fd] = reportDateFrom.split('-').map(Number);
+        if (dt < new Date(fy, fm - 1, fd, 0, 0, 0)) return false;
+      }
+      if (reportDateTo) {
+        const [ty, tm, td] = reportDateTo.split('-').map(Number);
+        if (dt > new Date(ty, tm - 1, td, 23, 59, 59)) return false;
+      }
+    }
     // customer filter
     if (reportCustomer && (e.customer || '') !== reportCustomer) return false;
     // job filter
@@ -1660,6 +1705,10 @@ function updateFilterBanner() {
   const text = document.getElementById('r-filter-banner-text');
   if (!banner || !text) return;
   const parts = [];
+  if (reportPeriod === 'custom' && reportDateFrom && reportDateTo) {
+    const fmt = s => { const [y,m,d] = s.split('-'); return +m + '/' + +d + '/' + y.slice(2); };
+    parts.push(fmt(reportDateFrom) + ' – ' + fmt(reportDateTo));
+  }
   if (reportCustomer) parts.push('Customer: ' + reportCustomer);
   if (reportJob) parts.push('Job: ' + jobName(reportJob));
   if (parts.length > 0) {
