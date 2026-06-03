@@ -1,0 +1,2148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AS Finance">
+<link rel="manifest" href="manifest.json">
+<title>Activate Solutions — Finance Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+:root {
+  --brand: #1A7FAA;
+  --brand-dark: #155F8A;
+  --brand-light: #E6F4FA;
+  --brand-mid: #B8DFF0;
+  --success: #1D9E75;
+  --success-bg: #E1F5EE;
+  --danger: #D84040;
+  --danger-bg: #FCEBEB;
+  --warn: #BA7517;
+  --warn-bg: #FAEEDA;
+  --bg: #F4F6F8;
+  --surface: #FFFFFF;
+  --surface2: #F0F4F7;
+  --border: rgba(0,0,0,0.10);
+  --border-strong: rgba(0,0,0,0.18);
+  --text: #1A1C1E;
+  --text2: #5A6370;
+  --text3: #9BA3AD;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-pill: 100px;
+  --shadow: 0 1px 4px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.14);
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: 430px;
+  margin: 0 auto;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* SCREENS */
+.screen { display: none; flex-direction: column; height: 100%; overflow: hidden; }
+.screen.active { display: flex; }
+.scrollable { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(80px + var(--safe-bottom)); }
+.scrollable::-webkit-scrollbar { display: none; }
+
+/* TOPBAR */
+.topbar {
+  padding: calc(var(--safe-top) + 14px) 16px 14px;
+  background: var(--brand);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  position: relative;
+}
+.topbar h1 { font-size: 17px; font-weight: 600; flex: 1; letter-spacing: -0.2px; }
+.topbar-btn {
+  background: rgba(255,255,255,0.18);
+  border: none;
+  color: #fff;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.topbar-btn:active { background: rgba(255,255,255,0.3); }
+
+/* BOTTOM NAV */
+.nav-bar {
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding-bottom: var(--safe-bottom);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+.nav-btn {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 3px;
+  padding: 10px 4px 8px;
+  background: none; border: none;
+  cursor: pointer;
+  font-size: 10px;
+  font-family: var(--font);
+  color: var(--text3);
+  letter-spacing: 0.02em;
+  transition: color .15s;
+}
+.nav-btn i { font-size: 22px; }
+.nav-btn.active { color: var(--brand); }
+.nav-btn.active i { font-size: 22px; }
+
+/* CARDS */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+/* METRIC GRID */
+.metric-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 16px 16px 0; }
+.metric {
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 12px 8px 10px;
+  text-align: center;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.metric .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); margin-bottom: 6px; font-weight: 500; }
+.metric .val { font-size: 17px; font-weight: 600; font-family: var(--mono); letter-spacing: -0.5px; }
+.val-green { color: var(--success); }
+.val-red { color: var(--danger); }
+.val-blue { color: var(--brand); }
+
+/* PERIOD LABEL */
+.period-label { font-size: 12px; color: var(--text3); font-weight: 500; padding: 14px 16px 4px; text-transform: uppercase; letter-spacing: .06em; }
+
+/* QUICK ACTIONS */
+.quick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px 16px 0; }
+.quick-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 12px 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  cursor: pointer;
+  font-size: 13px; font-weight: 500;
+  font-family: var(--font);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  transition: transform .1s, box-shadow .1s;
+}
+.quick-btn:active { transform: scale(0.97); box-shadow: none; }
+.quick-btn .icon-wrap {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+.quick-btn.income .icon-wrap { background: var(--success-bg); color: var(--success); }
+.quick-btn.expense .icon-wrap { background: var(--danger-bg); color: var(--danger); }
+.quick-btn.mileage .icon-wrap { background: var(--brand-light); color: var(--brand); }
+.quick-btn.reports .icon-wrap { background: #F0EAF8; color: #7B4FB5; }
+.quick-btn.full { grid-column: 1 / -1; flex-direction: row; justify-content: center; padding: 14px 16px; }
+.quick-btn.full .icon-wrap { width: 36px; height: 36px; border-radius: 10px; font-size: 18px; background: var(--brand-light); color: var(--brand); }
+
+/* SECTION HEADER */
+.section-header { padding: 18px 16px 8px; display: flex; align-items: center; justify-content: space-between; }
+.section-header h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); }
+
+/* ENTRY LIST */
+.entry-list { display: flex; flex-direction: column; gap: 1px; padding: 0 16px; }
+.entry-item {
+  background: var(--surface);
+  padding: 12px 14px;
+  display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.entry-item:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+.entry-item:last-child { border-radius: 0 0 var(--radius) var(--radius); border-bottom: none; }
+.entry-item:only-child { border-radius: var(--radius); border-bottom: none; }
+.entry-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+.entry-icon.inc { background: var(--success-bg); color: var(--success); }
+.entry-icon.exp { background: var(--danger-bg); color: var(--danger); }
+.entry-icon.mil { background: var(--brand-light); color: var(--brand); }
+.entry-info { flex: 1; min-width: 0; }
+.entry-desc { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.entry-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.entry-amt { font-size: 14px; font-weight: 600; font-family: var(--mono); flex-shrink: 0; }
+.entry-amt.inc { color: var(--success); }
+.entry-amt.exp { color: var(--danger); }
+.entry-amt.mil { color: var(--brand); }
+
+.empty-state { padding: 40px 20px; text-align: center; color: var(--text3); }
+.empty-state i { font-size: 44px; display: block; margin-bottom: 10px; color: var(--border-strong); }
+.empty-state p { font-size: 14px; }
+
+/* PIN SCREEN */
+.pin-screen {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0;
+  padding: calc(var(--safe-top) + 40px) 32px calc(var(--safe-bottom) + 40px);
+  background: var(--brand);
+  position: relative;
+  overflow: hidden;
+}
+.pin-screen::before {
+  content: '';
+  position: absolute; top: -80px; right: -80px;
+  width: 280px; height: 280px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+}
+.pin-screen::after {
+  content: '';
+  position: absolute; bottom: -40px; left: -60px;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+}
+.pin-logo {
+  width: 72px; height: 72px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 20px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.pin-logo i { font-size: 34px; color: #fff; }
+.pin-title { font-size: 22px; font-weight: 600; color: #fff; letter-spacing: -0.3px; margin-bottom: 4px; }
+.pin-subtitle { font-size: 13px; color: rgba(255,255,255,0.65); margin-bottom: 36px; }
+.pin-dots { display: flex; gap: 16px; margin-bottom: 12px; }
+.pin-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.5);
+  background: transparent;
+  transition: background .12s, border-color .12s;
+}
+.pin-dot.filled { background: #fff; border-color: #fff; }
+.pin-error { font-size: 13px; color: rgba(255,100,100,0.9); height: 20px; margin-bottom: 24px; text-align: center; }
+.pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 280px; position: relative; z-index: 1; }
+.pin-key {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: var(--radius);
+  padding: 18px;
+  font-size: 24px; font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--mono);
+  text-align: center;
+  transition: background .1s;
+}
+.pin-key:active { background: rgba(255,255,255,0.25); }
+.pin-key.action { font-size: 13px; font-family: var(--font); font-weight: 500; }
+.pin-key.del { font-size: 20px; }
+.pin-hint { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 20px; position: relative; z-index: 1; }
+
+/* WIZARD */
+.wizard-progress { display: flex; gap: 4px; padding: 10px 16px 0; background: var(--brand); }
+.wiz-seg { height: 3px; border-radius: 2px; flex: 1; background: rgba(255,255,255,0.25); transition: background .2s; }
+.wiz-seg.done { background: #fff; }
+
+.step-body { flex: 1; padding: 24px 16px 16px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.step-body::-webkit-scrollbar { display: none; }
+.step-q { font-size: 22px; font-weight: 600; line-height: 1.3; letter-spacing: -0.3px; }
+.step-hint { font-size: 13px; color: var(--text2); margin-top: -12px; }
+
+.choice-list { display: flex; flex-direction: column; gap: 8px; }
+.choice-list.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.choice-btn {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  font-size: 15px; font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+  font-family: var(--font);
+  display: flex; align-items: center; gap: 12px;
+  transition: border-color .12s, background .12s;
+  box-shadow: var(--shadow);
+}
+.choice-btn i { font-size: 20px; color: var(--text3); flex-shrink: 0; }
+.choice-btn.sel, .choice-btn:active { border-color: var(--brand); background: var(--brand-light); }
+.choice-btn.sel i { color: var(--brand); }
+.choice-btn.center { justify-content: center; text-align: center; flex-direction: column; gap: 6px; padding: 16px 10px; }
+.choice-btn.center i { font-size: 22px; }
+
+.big-input-wrap { display: flex; align-items: baseline; gap: 4px; border-bottom: 2px solid var(--brand); padding-bottom: 8px; }
+.currency-sign { font-size: 28px; font-weight: 600; color: var(--brand); font-family: var(--mono); }
+.big-input {
+  font-size: 42px; font-weight: 600;
+  font-family: var(--mono);
+  color: var(--brand);
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 100%;
+  letter-spacing: -1px;
+  padding: 0;
+}
+.big-input::placeholder { color: var(--brand-mid); }
+
+input[type=text], input[type=number], select, textarea {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--brand); }
+textarea { resize: none; line-height: 1.5; }
+label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); display: block; margin-bottom: 6px; }
+
+.markup-preview { font-size: 13px; color: var(--text2); padding: 8px 14px; background: var(--surface2); border-radius: var(--radius-sm); }
+.markup-preview strong { color: var(--brand); font-family: var(--mono); }
+
+/* BOTTOM BAR */
+.bottom-bar {
+  padding: 12px 16px calc(var(--safe-bottom) + 12px);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px;
+  flex-shrink: 0;
+}
+.btn-primary {
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 14px 20px;
+  font-size: 15px; font-weight: 600;
+  cursor: pointer;
+  flex: 1;
+  font-family: var(--font);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: opacity .1s;
+}
+.btn-primary:active { opacity: .85; }
+.btn-secondary {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  font-size: 15px; font-weight: 500;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background .1s;
+}
+.btn-secondary:active { background: var(--border); }
+
+/* CONFIRM CARD */
+.confirm-card { background: var(--surface2); border-radius: var(--radius); padding: 16px; border: 1px solid var(--border); }
+.confirm-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.confirm-row:last-child { border: none; }
+.confirm-key { color: var(--text2); }
+.confirm-val { font-weight: 500; }
+.confirm-total { display: flex; justify-content: space-between; align-items: center; padding: 14px 0 0; font-size: 17px; font-weight: 600; }
+.confirm-total .ct { color: var(--brand); font-family: var(--mono); }
+
+/* SUCCESS */
+.success-screen {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 16px; padding: 40px 24px calc(var(--safe-bottom) + 40px);
+  text-align: center;
+}
+.success-ring {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: var(--success-bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 38px; color: var(--success);
+  animation: pop .3s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes pop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.success-title { font-size: 24px; font-weight: 600; letter-spacing: -0.3px; }
+.success-sub { font-size: 14px; color: var(--text2); }
+.success-amount { font-size: 36px; font-weight: 600; font-family: var(--mono); color: var(--brand); letter-spacing: -1px; }
+
+/* REPORTS */
+.report-tabs { display: flex; gap: 6px; padding: 14px 16px 0; }
+.rtab {
+  flex: 1; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 9px;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: var(--font); color: var(--text2);
+  transition: all .15s;
+}
+.rtab.active { background: var(--brand); color: #fff; border-color: var(--brand); }
+.report-block { margin: 14px 16px 0; }
+.report-block h3 {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--text3); margin-bottom: 8px;
+}
+.report-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+.report-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 14px; }
+.report-row:last-child { border: none; }
+.report-row .rk { color: var(--text2); }
+.report-row .rv { font-weight: 600; font-family: var(--mono); }
+.report-row.total-row { background: var(--surface2); }
+.report-row.total-row .rk { font-weight: 600; color: var(--text); }
+
+/* SETTINGS */
+.settings-group { margin: 14px 16px 0; }
+.settings-group h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text3); margin-bottom: 8px; }
+.settings-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+.settings-row {
+  display: flex; align-items: center; padding: 14px 16px;
+  border-bottom: 1px solid var(--border); cursor: pointer; gap: 12px;
+  transition: background .1s;
+}
+.settings-row:last-child { border: none; }
+.settings-row:active { background: var(--surface2); }
+.settings-row i.s-icon { font-size: 20px; color: var(--brand); width: 24px; }
+.settings-row .s-label { flex: 1; font-size: 14px; font-weight: 500; }
+.settings-row .s-value { font-size: 13px; color: var(--text3); }
+.settings-row i.s-arr { font-size: 16px; color: var(--text3); }
+.settings-row.danger i.s-icon { color: var(--danger); }
+.settings-row.danger .s-label { color: var(--danger); }
+
+/* CHIPS */
+.chip-area { padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-pill); padding: 6px 12px;
+  font-size: 13px; font-weight: 500;
+  display: flex; align-items: center; gap: 6px; cursor: pointer;
+}
+.chip i { font-size: 14px; color: var(--danger); }
+.add-chip {
+  background: transparent; border: 1.5px dashed var(--brand);
+  border-radius: var(--radius-pill); padding: 6px 12px;
+  font-size: 13px; font-weight: 500; color: var(--brand);
+  cursor: pointer; display: flex; align-items: center; gap: 5px;
+  font-family: var(--font);
+}
+
+/* MODAL */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: none; align-items: flex-end; justify-content: center;
+  z-index: 200;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+.modal-overlay.open { display: flex; }
+.modal-sheet {
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  padding: 0 20px calc(var(--safe-bottom) + 20px);
+  width: 100%; max-width: 430px;
+  animation: slideUp .22s cubic-bezier(.32,.72,0,1);
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-handle { width: 36px; height: 4px; background: var(--border-strong); border-radius: 2px; margin: 12px auto 16px; }
+.modal-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; letter-spacing: -0.2px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+
+/* TAGS */
+.tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: var(--radius-pill); }
+.tag.reimb { background: var(--success-bg); color: var(--success); }
+.tag.markup { background: var(--brand-light); color: var(--brand-dark); }
+.tag.warn { background: var(--warn-bg); color: var(--warn); }
+
+/* SYNC STATUS */
+.sync-row { padding: 14px 16px; text-align: center; }
+.filter-row { padding: 10px 16px 0; display: flex; flex-direction: column; gap: 6px; }
+.filter-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); }
+.pill-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.pill-row::-webkit-scrollbar { display: none; }
+.pill {
+  background: var(--surface); border: 1.5px solid var(--border);
+  border-radius: var(--radius-pill); padding: 6px 14px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  white-space: nowrap; font-family: var(--font); color: var(--text2);
+  flex-shrink: 0; transition: all .12s;
+}
+.pill.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+.filter-banner {
+  margin: 10px 16px 0;
+  background: var(--brand-light); border: 1px solid var(--brand-mid);
+  border-radius: var(--radius-sm); padding: 9px 12px;
+  font-size: 13px; color: var(--brand-dark); display: none;
+  align-items: center; gap: 8px;
+}
+.filter-banner.visible { display: flex; }
+.filter-banner i { font-size: 15px; flex-shrink: 0; }
+.filter-banner span { flex: 1; }
+.filter-banner button { background: none; border: none; color: var(--brand-dark); cursor: pointer; font-size: 18px; padding: 0; line-height: 1; }
+.sync-row p { font-size: 12px; color: var(--text3); }
+
+/* HISTORY SEARCH */
+.search-bar { padding: 10px 16px; }
+.search-bar input { background: var(--surface2); border-color: transparent; border-radius: var(--radius-pill); padding: 10px 16px; }
+
+/* LOADING SPINNER */
+.loading-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* DETAIL MODAL */
+.detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.detail-row:last-child { border: none; }
+.detail-key { color: var(--text2); }
+.detail-val { font-weight: 500; max-width: 60%; text-align: right; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- LOADING -->
+<div id="screen-loading" class="screen">
+  <div class="pin-screen">
+    <div class="pin-logo"><i class="ti ti-tool"></i></div>
+    <p class="pin-title">Activate Solutions</p>
+    <p class="pin-subtitle">Loading your data…</p>
+    <div style="margin-top:28px"><div class="loading-spinner"></div></div>
+  </div>
+</div>
+
+<!-- PIN -->
+<div id="screen-pin" class="screen active">
+  <div class="pin-screen">
+    <div class="pin-logo"><i class="ti ti-tool"></i></div>
+    <p class="pin-title">Activate Solutions</p>
+    <p class="pin-subtitle">Finance Tracker</p>
+    <div class="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <p class="pin-error" id="pin-error"></p>
+    <div class="pin-pad">
+      <button class="pin-key" onclick="pinTap('1')">1</button>
+      <button class="pin-key" onclick="pinTap('2')">2</button>
+      <button class="pin-key" onclick="pinTap('3')">3</button>
+      <button class="pin-key" onclick="pinTap('4')">4</button>
+      <button class="pin-key" onclick="pinTap('5')">5</button>
+      <button class="pin-key" onclick="pinTap('6')">6</button>
+      <button class="pin-key" onclick="pinTap('7')">7</button>
+      <button class="pin-key" onclick="pinTap('8')">8</button>
+      <button class="pin-key" onclick="pinTap('9')">9</button>
+      <button class="pin-key action" onclick="pinTap('clear')">clear</button>
+      <button class="pin-key" onclick="pinTap('0')">0</button>
+      <button class="pin-key del" onclick="pinTap('del')"><i class="ti ti-backspace"></i></button>
+    </div>
+    <p class="pin-hint" id="pin-hint"></p>
+  </div>
+</div>
+
+<!-- HOME -->
+<div id="screen-home" class="screen">
+  <div class="topbar">
+    <i class="ti ti-tool"></i>
+    <h1>Activate Solutions</h1>
+    <button class="topbar-btn" onclick="showScreen('screen-settings')" aria-label="Settings"><i class="ti ti-settings"></i></button>
+  </div>
+  <div class="scrollable">
+    <p class="period-label" id="home-period">May 2026</p>
+    <div class="metric-row">
+      <div class="metric"><div class="lbl">Income</div><div class="val val-green" id="m-income">$0</div></div>
+      <div class="metric"><div class="lbl">Expenses</div><div class="val val-red" id="m-expense">$0</div></div>
+      <div class="metric"><div class="lbl">Net</div><div class="val val-blue" id="m-net">$0</div></div>
+    </div>
+    <div class="quick-grid">
+      <button class="quick-btn income" onclick="startWizard('income')">
+        <div class="icon-wrap"><i class="ti ti-circle-plus"></i></div>Income
+      </button>
+      <button class="quick-btn expense" onclick="startWizard('expense')">
+        <div class="icon-wrap"><i class="ti ti-circle-minus"></i></div>Expense
+      </button>
+      <button class="quick-btn mileage" onclick="startWizard('mileage')">
+        <div class="icon-wrap"><i class="ti ti-car"></i></div>Mileage
+      </button>
+      <button class="quick-btn reports" onclick="showScreen('screen-reports')">
+        <div class="icon-wrap"><i class="ti ti-chart-bar"></i></div>Reports
+      </button>
+      <button class="quick-btn full" onclick="syncToSheets()">
+        <div class="icon-wrap"><i class="ti ti-table-export"></i></div>Sync to Google Sheets
+      </button>
+    </div>
+    <div class="section-header"><h2>Recent entries</h2></div>
+    <div class="entry-list" id="recent-list">
+      <div class="empty-state"><i class="ti ti-inbox"></i><p>No entries yet — tap Income or Expense to get started</p></div>
+    </div>
+    <div style="height:20px"></div>
+  </div>
+  <div class="nav-bar">
+    <button class="nav-btn active" onclick="showScreen('screen-home')"><i class="ti ti-home"></i>Home</button>
+    <button class="nav-btn" onclick="showScreen('screen-reports')"><i class="ti ti-chart-bar"></i>Reports</button>
+    <button class="nav-btn" onclick="showScreen('screen-history')"><i class="ti ti-list"></i>History</button>
+    <button class="nav-btn" onclick="showScreen('screen-settings')"><i class="ti ti-settings"></i>Settings</button>
+  </div>
+</div>
+
+<!-- WIZARD -->
+<div id="screen-wizard" class="screen">
+  <div class="topbar" id="wizard-topbar">
+    <button class="topbar-btn" onclick="wizardBack()" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
+    <h1 id="wizard-title">Add Entry</h1>
+    <span style="width:34px"></span>
+  </div>
+  <div class="wizard-progress" id="wizard-prog"></div>
+  <div id="wizard-body" style="flex:1;display:flex;flex-direction:column;overflow:hidden"></div>
+</div>
+
+<!-- SUCCESS -->
+<div id="screen-success" class="screen">
+  <div class="topbar">
+    <span style="width:34px"></span>
+    <h1>Entry Saved</h1>
+    <span style="width:34px"></span>
+  </div>
+  <div class="success-screen">
+    <div class="success-ring"><i class="ti ti-check"></i></div>
+    <p class="success-amount" id="succ-amount"></p>
+    <p class="success-title" id="succ-title">Saved!</p>
+    <p class="success-sub" id="succ-sub"></p>
+    <button class="btn-primary" onclick="showScreen('screen-home')" style="margin-top:12px;max-width:240px">Back to home</button>
+    <button class="btn-secondary" id="succ-another" onclick="startWizard(lastWizardType)" style="margin-top:8px;max-width:240px">Add another</button>
+  </div>
+</div>
+
+<!-- REPORTS -->
+<div id="screen-reports" class="screen">
+  <div class="topbar">
+    <button class="topbar-btn" onclick="showScreen('screen-home')" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
+    <h1>Reports</h1>
+    <span style="width:34px"></span>
+  </div>
+  <div class="scrollable">
+
+    <!-- Period tabs -->
+    <div class="report-tabs" style="margin-top:12px">
+      <button class="rtab active" onclick="setReportPeriod('week',this)">Week</button>
+      <button class="rtab" onclick="setReportPeriod('month',this)">Month</button>
+      <button class="rtab" onclick="setReportPeriod('ytd',this)">YTD</button>
+      <button class="rtab" onclick="setReportPeriod('all',this)">All time</button>
+    </div>
+
+    <!-- Customer filter -->
+    <div class="filter-row">
+      <p class="filter-label">Customer</p>
+      <div class="pill-row" id="r-customer-pills"></div>
+    </div>
+
+    <!-- Job filter -->
+    <div class="filter-row" id="r-job-filter-row">
+      <p class="filter-label">Job</p>
+      <div class="pill-row" id="r-job-pills"></div>
+    </div>
+
+    <!-- Active filter banner -->
+    <div class="filter-banner" id="r-filter-banner">
+      <i class="ti ti-filter"></i>
+      <span id="r-filter-banner-text"></span>
+      <button onclick="clearAllReportFilters()" title="Clear filters"><i class="ti ti-x"></i></button>
+    </div>
+
+    <!-- P&L -->
+    <div class="report-block">
+      <h3>P&L Summary</h3>
+      <div class="report-card">
+        <div class="report-row"><span class="rk">Total income</span><span class="rv val-green" id="r-income">$0.00</span></div>
+        <div class="report-row"><span class="rk">Total expenses</span><span class="rv val-red" id="r-expense">$0.00</span></div>
+        <div class="report-row"><span class="rk">Mileage deduction</span><span class="rv val-blue" id="r-mil-ded2">$0.00</span></div>
+        <div class="report-row total-row"><span class="rk">Net profit</span><span class="rv" id="r-net2">$0.00</span></div>
+      </div>
+    </div>
+
+    <!-- Expense breakdown -->
+    <div class="report-block">
+      <h3>Expense breakdown</h3>
+      <div class="report-card" id="r-cat-breakdown"><div style="padding:14px;font-size:13px;color:var(--text3)">No expenses yet</div></div>
+    </div>
+
+    <!-- Reimbursable -->
+    <div class="report-block">
+      <h3>Reimbursable expenses</h3>
+      <div class="report-card">
+        <div class="report-row"><span class="rk">At cost</span><span class="rv" id="r-reimb-cost2">$0.00</span></div>
+        <div class="report-row"><span class="rk">Billed with markup</span><span class="rv" id="r-reimb-markup2">$0.00</span></div>
+      </div>
+    </div>
+
+    <!-- Mileage -->
+    <div class="report-block">
+      <h3>Mileage log</h3>
+      <div class="report-card">
+        <div class="report-row"><span class="rk">Total miles</span><span class="rv" id="r-miles2">0 mi</span></div>
+        <div class="report-row"><span class="rk">IRS rate (2026)</span><span class="rv">$0.70/mi</span></div>
+        <div class="report-row"><span class="rk">Deduction</span><span class="rv val-blue" id="r-mil-ded3">$0.00</span></div>
+      </div>
+    </div>
+
+    <!-- Schedule C — only when no customer/job filter active -->
+    <div class="report-block" id="r-schedC-block">
+      <h3>Tax prep — Schedule C</h3>
+      <div class="report-card" id="r-schedule-c"><div style="padding:14px;font-size:13px;color:var(--text3)">No data yet</div></div>
+    </div>
+
+    <div class="sync-row"><p id="sync-status2">Not yet synced to Sheets</p></div>
+    <div style="padding:0 16px 8px">
+      <button class="btn-primary" onclick="syncToSheets()"><i class="ti ti-table-export"></i> Sync to Google Sheets</button>
+    </div>
+    <div style="height:20px"></div>
+  </div>
+  <div class="nav-bar">
+    <button class="nav-btn" onclick="showScreen('screen-home')"><i class="ti ti-home"></i>Home</button>
+    <button class="nav-btn active" onclick="showScreen('screen-reports')"><i class="ti ti-chart-bar"></i>Reports</button>
+    <button class="nav-btn" onclick="showScreen('screen-history')"><i class="ti ti-list"></i>History</button>
+    <button class="nav-btn" onclick="showScreen('screen-settings')"><i class="ti ti-settings"></i>Settings</button>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div id="screen-history" class="screen">
+  <div class="topbar">
+    <button class="topbar-btn" onclick="showScreen('screen-home')" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
+    <h1>All Entries</h1>
+    <span style="width:34px"></span>
+  </div>
+  <div class="search-bar"><input type="text" id="history-search" placeholder="Search entries…" oninput="refreshHistory()"></div>
+  <div class="scrollable" style="padding-top:0">
+    <div class="entry-list" id="history-list"><div class="empty-state"><i class="ti ti-inbox"></i><p>No entries yet</p></div></div>
+    <div style="padding:10px 16px 0">
+      <button id="load-older-btn" class="btn-secondary" style="width:100%;display:none" onclick="loadOlderEntries()"><i class="ti ti-history"></i> Load older entries</button>
+    </div>
+    <div style="height:20px"></div>
+  </div>
+  <div class="nav-bar">
+    <button class="nav-btn" onclick="showScreen('screen-home')"><i class="ti ti-home"></i>Home</button>
+    <button class="nav-btn" onclick="showScreen('screen-reports')"><i class="ti ti-chart-bar"></i>Reports</button>
+    <button class="nav-btn active" onclick="showScreen('screen-history')"><i class="ti ti-list"></i>History</button>
+    <button class="nav-btn" onclick="showScreen('screen-settings')"><i class="ti ti-settings"></i>Settings</button>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="screen-settings" class="screen">
+  <div class="topbar">
+    <button class="topbar-btn" onclick="showScreen('screen-home')" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
+    <h1>Settings</h1>
+    <span style="width:34px"></span>
+  </div>
+  <div class="scrollable">
+    <div class="settings-group">
+      <h3>General</h3>
+      <div class="settings-card">
+        <div class="settings-row" onclick="openModal('modal-pin')">
+          <i class="ti ti-lock s-icon"></i><span class="s-label">Change PIN</span><i class="ti ti-chevron-right s-arr"></i>
+        </div>
+        <div class="settings-row" onclick="openModal('modal-markup')">
+          <i class="ti ti-percentage s-icon"></i><span class="s-label">Default markup</span><span class="s-value" id="s-markup-val">20%</span><i class="ti ti-chevron-right s-arr"></i>
+        </div>
+      </div>
+    </div>
+    <div class="settings-group">
+      <h3>Customers</h3>
+      <div class="chip-area" id="customer-chips"></div>
+      <button class="add-chip" style="margin-top:8px" onclick="openModal('modal-addcustomer')"><i class="ti ti-plus"></i>Add customer</button>
+    </div>
+    <div class="settings-group">
+      <h3>Jobs</h3>
+      <div class="chip-area" id="job-chips"></div>
+      <button class="add-chip" style="margin-top:8px" onclick="openModal('modal-addjob')"><i class="ti ti-plus"></i>Add job</button>
+    </div>
+    <div class="settings-group">
+      <h3>Expense categories</h3>
+      <div class="chip-area" id="category-chips"></div>
+      <button class="add-chip" style="margin-top:8px" onclick="openModal('modal-addcat')"><i class="ti ti-plus"></i>Add category</button>
+    </div>
+    <div class="settings-group">
+      <h3>Data</h3>
+      <div class="settings-card">
+        <div class="settings-row" onclick="exportCSV()">
+          <i class="ti ti-file-download s-icon"></i><span class="s-label">Export CSV</span><i class="ti ti-chevron-right s-arr"></i>
+        </div>
+        <div class="settings-row danger" onclick="openModal('modal-clear')">
+          <i class="ti ti-trash s-icon"></i><span class="s-label">Clear all data</span><i class="ti ti-chevron-right s-arr"></i>
+        </div>
+      </div>
+    </div>
+    <div style="height:30px"></div>
+  </div>
+  <div class="nav-bar">
+    <button class="nav-btn" onclick="showScreen('screen-home')"><i class="ti ti-home"></i>Home</button>
+    <button class="nav-btn" onclick="showScreen('screen-reports')"><i class="ti ti-chart-bar"></i>Reports</button>
+    <button class="nav-btn" onclick="showScreen('screen-history')"><i class="ti ti-list"></i>History</button>
+    <button class="nav-btn active" onclick="showScreen('screen-settings')"><i class="ti ti-settings"></i>Settings</button>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modal-pin" onclick="closeModalOutside(event,'modal-pin')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <p class="modal-title">Change PIN</p>
+    <label class="field-label">New 4-digit PIN</label>
+    <input type="number" id="new-pin-input" placeholder="Enter 4 digits" maxlength="4" inputmode="numeric">
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modal-pin')">Cancel</button>
+      <button class="btn-primary" onclick="savePin()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-markup" onclick="closeModalOutside(event,'modal-markup')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <p class="modal-title">Default markup %</p>
+    <label class="field-label">Percentage</label>
+    <input type="number" id="markup-input" placeholder="20" min="0" max="200" inputmode="numeric">
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modal-markup')">Cancel</button>
+      <button class="btn-primary" onclick="saveMarkup()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-addcustomer" onclick="closeModalOutside(event,'modal-addcustomer')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <p class="modal-title">Add customer</p>
+    <label class="field-label">Customer name</label>
+    <input type="text" id="new-customer-input" placeholder="Full name">
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modal-addcustomer')">Cancel</button>
+      <button class="btn-primary" onclick="addCustomer()">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-addjob" onclick="closeModalOutside(event,'modal-addjob')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <p class="modal-title">Add job</p>
+    <label class="field-label">Job name</label>
+    <input type="text" id="new-job-modal-input" placeholder="e.g. Master bath remodel">
+    <label class="field-label" style="margin-top:12px">Job location (optional)</label>
+    <input type="text" id="new-job-modal-location" placeholder="e.g. 123 Main St, San Antonio">
+    <label class="field-label" style="margin-top:12px">Link to customer (optional)</label>
+    <select id="new-job-modal-customer">
+      <option value="">No customer</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modal-addjob')">Cancel</button>
+      <button class="btn-primary" onclick="addJobFromSettings()">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-addcat" onclick="closeModalOutside(event,'modal-addcat')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <p class="modal-title">Add category</p>
+    <label class="field-label">Category name</label>
+    <input type="text" id="new-cat-input" placeholder="e.g. Uniforms">
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modal-addcat')">Cancel</button>
+      <button class="btn-primary" onclick="addCategory()">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-clear" onclick="closeModalOutside(event,'modal-clear')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <p class="modal-title">Clear all data?</p>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:4px">This permanently deletes all entries, customers, and settings. This cannot be undone.</p>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('modal-clear')">Cancel</button>
+      <button class="btn-primary" style="background:var(--danger)" onclick="clearAllData()">Delete everything</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-detail" onclick="closeModalOutside(event,'modal-detail')">
+  <div class="modal-sheet" style="max-height:90vh;display:flex;flex-direction:column">
+    <div class="modal-handle"></div>
+    <p class="modal-title" id="detail-title">Entry detail</p>
+    <div style="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch">
+      <!-- READ VIEW -->
+      <div id="detail-read">
+        <div id="detail-body"></div>
+        <div class="modal-actions" style="margin-top:16px">
+          <button class="btn-primary" onclick="startEditEntry()" style="background:var(--brand)"><i class="ti ti-pencil"></i> Edit</button>
+          <button class="btn-secondary" id="detail-delete-btn">Delete</button>
+        </div>
+        <button class="btn-secondary" onclick="closeModal('modal-detail')" style="width:100%;margin-top:8px">Close</button>
+      </div>
+      <!-- EDIT VIEW -->
+      <div id="detail-edit" style="display:none">
+        <div id="edit-form-body" style="display:flex;flex-direction:column;gap:14px"></div>
+        <div class="modal-actions" style="margin-top:16px">
+          <button class="btn-primary" onclick="saveEditEntry()"><i class="ti ti-check"></i> Save changes</button>
+          <button class="btn-secondary" onclick="cancelEditEntry()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const SHEETS_URL = https://script.google.com/macros/s/AKfycbxs1VO_Ai8H7d1DulAOZqHQfGZT3fOidy1AKX8BGsSBQpGdLYuNwDfFyZnnnTy5aJrP/exec;
+
+const IRS_RATE = 0.70;
+const DEFAULT_CATS = ['Tools & Equipment','Fuel/Mileage','Materials','Insurance','Platform Fees (Angi)','Advertising','Subcontractors','Other'];
+const PAYMENT_METHODS = ['Cash','Check','Venmo','Cash App'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// ─── IN-MEMORY CACHE ─────────────────────────────────────────────────────────
+let _entries = [];
+let _customers = [];
+let _jobs = [];
+let _categories = [...DEFAULT_CATS];
+let _vendors = [];
+let _settings = { pin: '1234', defaultMarkup: 20 };
+let _hasOlderEntries = false;
+let _oldestLoadedDate = null;
+let _dataLoaded = false;
+
+// ─── PIN CACHE (localStorage, available before data loads) ───────────────────
+function getPinCache() { try { return localStorage.getItem('as_pin_cache') || '1234'; } catch(e) { return '1234'; } }
+function setPinCache(p) { try { localStorage.setItem('as_pin_cache', p); } catch(e) {} }
+
+// ─── API ──────────────────────────────────────────────────────────────────────
+async function apiGet(params) {
+  const url = new URL(SHEETS_URL);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const r = await fetch(url.toString());
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function apiPost(data) {
+  const r = await fetch(SHEETS_URL, { method: 'POST', body: JSON.stringify(data) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+async function loadInitialData() {
+  const data = await apiGet({ action: 'getRecent', days: 90 });
+  _entries    = data.entries    || [];
+  _customers  = data.customers  || [];
+  _jobs       = data.jobs       || [];
+  _categories = (data.categories && data.categories.length) ? data.categories : [...DEFAULT_CATS];
+  _vendors    = data.vendors    || [];
+  _settings   = data.settings   || { pin: '1234', defaultMarkup: 20 };
+  _hasOlderEntries = data.hasOlder || false;
+  _oldestLoadedDate = _entries.length ? _entries[_entries.length - 1].date : null;
+  _dataLoaded = true;
+  setPinCache(_settings.pin);
+}
+
+async function loadOlderEntries() {
+  if (!_hasOlderEntries || !_oldestLoadedDate) return;
+  const btn = document.getElementById('load-older-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i> Loading…'; }
+  try {
+    const data = await apiGet({ action: 'getOlderEntries', before: _oldestLoadedDate });
+    const older = data.entries || [];
+    if (older.length) {
+      _entries = [..._entries, ...older];
+      _oldestLoadedDate = older[older.length - 1].date;
+    }
+    _hasOlderEntries = older.length > 0;
+    refreshHistory();
+  } catch(e) {
+    showToast('Failed to load older entries', 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-history"></i> Load older entries'; }
+  }
+}
+
+// ─── OFFLINE QUEUE ────────────────────────────────────────────────────────────
+function queueOffline(action, payload) {
+  try {
+    const q = JSON.parse(localStorage.getItem('as_sync_queue') || '[]');
+    q.push({ action, payload });
+    localStorage.setItem('as_sync_queue', JSON.stringify(q));
+  } catch(e) {}
+}
+async function flushSyncQueue() {
+  try {
+    const q = JSON.parse(localStorage.getItem('as_sync_queue') || '[]');
+    if (!q.length) return;
+    for (const item of q) await apiPost({ action: item.action, ...item.payload });
+    localStorage.removeItem('as_sync_queue');
+    showToast('Synced ' + q.length + ' queued ' + (q.length === 1 ? 'item' : 'items'), 'success');
+  } catch(e) {}
+}
+window.addEventListener('online', flushSyncQueue);
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+function showToast(msg, type) {
+  const old = document.getElementById('as-toast');
+  if (old) old.remove();
+  const t = document.createElement('div');
+  t.id = 'as-toast';
+  const bg = type === 'error' ? 'var(--danger)' : type === 'success' ? 'var(--success)' : '#1A1C1E';
+  t.style.cssText = `position:fixed;bottom:calc(80px + env(safe-area-inset-bottom,0px) + 12px);left:50%;
+    transform:translateX(-50%);background:${bg};color:#fff;padding:10px 18px;
+    border-radius:100px;font-size:13px;font-weight:500;z-index:9999;
+    max-width:320px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,0.2);
+    white-space:nowrap;animation:fadeInUp .2s ease;`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ─── VENDOR HISTORY ───────────────────────────────────────────────────────────
+function addVendorToHistory(name) {
+  if (!name || !name.trim()) return;
+  const n = name.trim();
+  const idx = _vendors.findIndex(x => x.toLowerCase() === n.toLowerCase());
+  if (idx > -1) _vendors.splice(idx, 1);
+  _vendors.unshift(n);
+  _vendors = _vendors.slice(0, 50);
+  apiPost({ action: 'saveVendors', vendors: _vendors }).catch(() => {});
+}
+
+// ─── UI STATE ─────────────────────────────────────────────────────────────────
+let pinBuffer = '';
+let wizardType = '';
+let wizardData = {};
+let wizardStep = 0;
+let wizardSteps = [];
+let lastWizardType = 'income';
+let reportPeriod = 'month';
+let reportCustomer = '';
+let reportJob = '';
+let currentDetailId = null;
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  closeAllModals();
+  if (id === 'screen-home') refreshHome();
+  if (id === 'screen-reports') refreshReports();
+  if (id === 'screen-history') refreshHistory();
+  if (id === 'screen-settings') refreshSettings();
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const navMap = { 'screen-home': 0, 'screen-reports': 1, 'screen-history': 2, 'screen-settings': 3 };
+  const screens = ['screen-home','screen-reports','screen-history','screen-settings'];
+  if (screens.includes(id)) {
+    document.querySelectorAll('#' + id + ' .nav-btn')[navMap[id]]?.classList.add('active');
+  }
+}
+
+// ─── PIN ──────────────────────────────────────────────────────────────────────
+(function initPin() {
+  if (getPinCache() === '1234') document.getElementById('pin-hint').textContent = 'Default PIN is 1234';
+})();
+
+function pinTap(k) {
+  const stored = _dataLoaded ? (_settings.pin || '1234') : getPinCache();
+  if (k === 'clear') { pinBuffer = ''; updateDots(); document.getElementById('pin-error').textContent = ''; return; }
+  if (k === 'del') { pinBuffer = pinBuffer.slice(0, -1); updateDots(); return; }
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += k;
+  updateDots();
+  if (pinBuffer.length === 4) {
+    setTimeout(async () => {
+      if (pinBuffer === stored) {
+        pinBuffer = ''; updateDots();
+        if (_dataLoaded) { showScreen('screen-home'); return; }
+        // Show loading screen, fetch data, then go home
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('screen-loading').classList.add('active');
+        try {
+          await loadInitialData();
+        } catch(e) {
+          showToast('Could not reach server — working offline', 'error');
+          _dataLoaded = true;
+        }
+        showScreen('screen-home');
+      } else {
+        document.getElementById('pin-error').textContent = 'Incorrect PIN. Try again.';
+        pinBuffer = ''; updateDots();
+      }
+    }, 150);
+  }
+}
+
+function updateDots() {
+  for (let i = 0; i < 4; i++)
+    document.getElementById('pd' + i).classList.toggle('filled', i < pinBuffer.length);
+}
+
+// ─── HOME ─────────────────────────────────────────────────────────────────────
+function refreshHome() {
+  const now = new Date();
+  const m = now.getMonth(), y = now.getFullYear();
+  const monthly = _entries.filter(e => { const dt = new Date(e.date); return dt.getMonth() === m && dt.getFullYear() === y; });
+  const income  = monthly.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
+  const expense = monthly.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
+  const net = income - expense;
+  document.getElementById('m-income').textContent = '$' + income.toFixed(2);
+  document.getElementById('m-expense').textContent = '$' + expense.toFixed(2);
+  document.getElementById('m-net').textContent = '$' + Math.abs(net).toFixed(2);
+  document.getElementById('m-net').className = 'val ' + (net >= 0 ? 'val-green' : 'val-red');
+  document.getElementById('home-period').textContent = MONTHS[m] + ' ' + y;
+  const recent = _entries.slice(0, 5);
+  const el = document.getElementById('recent-list');
+  el.innerHTML = recent.length === 0
+    ? '<div class="empty-state"><i class="ti ti-inbox"></i><p>No entries yet — tap Income or Expense to get started</p></div>'
+    : recent.map(e => entryHTML(e)).join('');
+}
+
+function entryHTML(e) {
+  const ic = e.type === 'income' ? 'inc' : e.type === 'expense' ? 'exp' : 'mil';
+  const icon = e.type === 'income' ? 'ti-arrow-down-circle' : e.type === 'expense' ? 'ti-arrow-up-circle' : 'ti-car';
+  const amt = e.type === 'mileage' ? (e.miles || 0) + ' mi' : '$' + (e.amount || 0).toFixed(2);
+  const sign = e.type === 'income' ? '+' : e.type === 'expense' ? '-' : '';
+  const jn = e.jobId ? jobName(e.jobId) : '';
+  const sub = [e.customer && e.customer !== 'No customer' ? e.customer : '', jn, e.category || '', e.vendor || ''].filter(Boolean).join(' · ');
+  const dt = new Date(e.date);
+  const dateStr = (dt.getMonth() + 1) + '/' + dt.getDate() + '/' + String(dt.getFullYear()).slice(-2);
+  return `<div class="entry-item" onclick="showDetail('${e.id}')">
+    <div class="entry-icon ${ic}"><i class="ti ${icon}"></i></div>
+    <div class="entry-info">
+      <div class="entry-desc">${e.description || (e.type.charAt(0).toUpperCase() + e.type.slice(1))}</div>
+      <div class="entry-sub">${sub ? sub + ' · ' : ''}${dateStr}</div>
+    </div>
+    <div class="entry-amt ${ic}">${sign}${amt}</div>
+  </div>`;
+}
+
+// --- WIZARD ---
+function startWizard(type) {
+  wizardType = type;
+  lastWizardType = type;
+  wizardData = {};
+  wizardStep = 0;
+  if (type === 'income') buildIncomeSteps();
+  else if (type === 'expense') buildExpenseSteps();
+  else buildMileageSteps();
+  document.getElementById('wizard-title').textContent = type === 'income' ? 'Add Income' : type === 'expense' ? 'Add Expense' : 'Add Mileage';
+  showScreen('screen-wizard');
+  renderStep();
+}
+
+function buildIncomeSteps() {
+  wizardSteps = [
+    { q: 'How much did you receive?', type: 'amount', key: 'amount' },
+    { q: 'How was it paid?', type: 'choice', key: 'payMethod', opts: PAYMENT_METHODS.map(m => ({ label: m, icon: payIcon(m) })) },
+    { q: 'Which customer?', type: 'customer', key: 'customer' },
+    { q: 'Which job?', type: 'job', key: 'jobId', optional: true },
+    { q: 'Job description', type: 'text', key: 'description', placeholder: 'What was the work?' },
+    { q: 'Review & save', type: 'confirm' }
+  ];
+}
+
+function buildExpenseSteps() {
+  wizardSteps = [
+    { q: 'How much did you spend?', type: 'amount', key: 'amount' },
+    { q: 'What category?', type: 'choice', key: 'category', opts: _categories.map(c => ({ label: c })), dynamic: true },
+    { q: 'Who did you buy from?', type: 'vendor', key: 'vendor', optional: true },
+    { q: 'Will the customer reimburse this?', type: 'choice', key: 'reimbursable', opts: [
+      { label: 'No', icon: 'ti-x' },
+      { label: 'Yes — at cost', icon: 'ti-check' },
+      { label: 'Yes — with markup', icon: 'ti-trending-up' }
+    ]},
+    { q: 'What markup %?', type: 'markup', key: 'markupPct', condition: () => wizardData.reimbursable === 'Yes — with markup' },
+    { q: 'Link to customer?', type: 'customer', key: 'customer', optional: true },
+    { q: 'Link to job?', type: 'job', key: 'jobId', optional: true },
+    { q: 'Notes', type: 'text', key: 'description', placeholder: 'Any notes about this expense', optional: true },
+    { q: 'Review & save', type: 'confirm' }
+  ];
+}
+
+function buildMileageSteps() {
+  wizardSteps = [
+    { q: 'How many miles did you drive?', type: 'miles', key: 'miles' },
+    { q: 'What was the purpose?', type: 'text', key: 'description', placeholder: 'e.g. Drive to Johnson fence job' },
+    { q: 'Link to customer?', type: 'customer', key: 'customer', optional: true },
+    { q: 'Link to job?', type: 'job', key: 'jobId', optional: true },
+    { q: 'Review & save', type: 'confirm' }
+  ];
+}
+
+function payIcon(m) {
+  return m === 'Cash' ? 'ti-cash' : m === 'Check' ? 'ti-writing' : m === 'Venmo' ? 'ti-brand-venmo' : 'ti-credit-card';
+}
+
+function activeSteps() {
+  return wizardSteps.filter(s => !s.condition || s.condition());
+}
+
+function renderStep() {
+  const steps = activeSteps();
+  const step = steps[wizardStep];
+  const total = steps.length;
+
+  // Progress bar
+  const prog = document.getElementById('wizard-prog');
+  prog.innerHTML = steps.map((_, i) => `<div class="wiz-seg${i <= wizardStep ? ' done' : ''}"></div>`).join('');
+
+  // Refresh category opts if dynamic
+  if (step.dynamic && step.type === 'choice') {
+    step.opts = _categories.map(c => ({ label: c }));
+  }
+
+  let html = `<div class="step-body"><p class="step-q">${step.q}</p>`;
+
+  if (step.type === 'amount') {
+    html += `<div class="big-input-wrap"><span class="currency-sign">$</span><input class="big-input" type="number" id="ws-amount" placeholder="0.00" inputmode="decimal" step="0.01" value="${wizardData.amount || ''}"></div>`;
+  } else if (step.type === 'miles') {
+    html += `<div class="big-input-wrap"><input class="big-input" type="number" id="ws-miles" placeholder="0" inputmode="decimal" value="${wizardData.miles || ''}" style="font-size:42px"></div>
+    <div class="markup-preview">IRS deduction @ $0.70/mi: <strong id="miles-calc">$0.00</strong></div>`;
+  } else if (step.type === 'choice') {
+    const grid = step.opts.length === 4 ? 'grid2' : '';
+    const center = step.opts.length === 4 ? 'center' : '';
+    html += `<div class="choice-list ${grid}">`;
+    step.opts.forEach(o => {
+      const sel = wizardData[step.key] === o.label ? 'sel' : '';
+      const ico = o.icon ? `<i class="ti ${o.icon}"></i>` : '';
+      html += `<button class="choice-btn ${center} ${sel}" onclick="choicePick('${step.key}','${o.label.replace(/'/g,"\\'")}',this)">${ico}${o.label}</button>`;
+    });
+    html += `</div>`;
+  } else if (step.type === 'customer') {
+    const custs = _customers;
+    html += `<div class="choice-list">`;
+    html += `<button class="choice-btn ${wizardData.customer === 'No customer' ? 'sel' : ''}" onclick="choicePick('customer','No customer',this)"><i class="ti ti-user-off"></i>No customer / standalone</button>`;
+    custs.forEach(c => {
+      html += `<button class="choice-btn ${wizardData.customer === c ? 'sel' : ''}" onclick="choicePick('customer','${c.replace(/'/g,"\\'")}',this)"><i class="ti ti-user"></i>${c}</button>`;
+    });
+    html += `<div id="new-cust-inline" style="display:none;gap:8px;margin-top:4px">
+      <input type="text" id="new-cust-input" placeholder="Customer name" style="margin-bottom:0" oninput="" onkeydown="if(event.key==='Enter')confirmInlineCustomer()">
+      <div style="display:flex;gap:8px">
+        <button class="btn-primary" onclick="confirmInlineCustomer()" style="flex:1;padding:11px"><i class="ti ti-check"></i> Add</button>
+        <button class="btn-secondary" onclick="cancelInlineCustomer()" style="padding:11px 14px"><i class="ti ti-x"></i></button>
+      </div>
+    </div>`;
+    html += `<button class="choice-btn" id="new-cust-trigger" onclick="showInlineCustomer()"><i class="ti ti-user-plus"></i>Add new customer…</button>`;
+    html += `</div>`;
+  } else if (step.type === 'job') {
+    const allJobs = _jobs;
+    const cust = wizardData.customer && wizardData.customer !== 'No customer' ? wizardData.customer : null;
+    const jobs = cust ? allJobs.filter(j => j.customer === cust) : allJobs;
+    html += `<div class="choice-list">`;
+    html += `<button class="choice-btn ${!wizardData.jobId ? 'sel' : ''}" onclick="choicePick('jobId','',this)"><i class="ti ti-minus"></i>No specific job</button>`;
+    jobs.forEach(j => {
+      const sel = wizardData.jobId === j.id ? 'sel' : '';
+      html += `<button class="choice-btn ${sel}" onclick="choicePick('jobId','${j.id}',this)" style="flex-direction:column;align-items:flex-start;gap:2px"><span style="display:flex;align-items:center;gap:8px"><i class="ti ti-briefcase"></i>${j.name}${j.customer ? ' <span style=\'font-size:11px;color:var(--text3)\'>('+j.customer+')</span>' : ''}</span>${j.location ? '<span style=\'font-size:11px;color:var(--text3);padding-left:26px\'><i class=\'ti ti-map-pin\' style=\'font-size:11px\'></i> '+j.location+'</span>' : ''}</button>`;
+    });
+    html += `<div id="new-job-inline" style="display:none;flex-direction:column;gap:8px;margin-top:4px">
+      <input type="text" id="new-job-input" placeholder="Job name e.g. Kitchen remodel">
+      <input type="text" id="new-job-location" placeholder="Job location e.g. 123 Main St" onkeydown="if(event.key==='Enter')confirmInlineJob()">
+      <div style="display:flex;gap:8px">
+        <button class="btn-primary" onclick="confirmInlineJob()" style="flex:1;padding:11px"><i class="ti ti-check"></i> Add</button>
+        <button class="btn-secondary" onclick="cancelInlineJob()" style="padding:11px 14px"><i class="ti ti-x"></i></button>
+      </div>
+    </div>`;
+    html += `<button class="choice-btn" id="new-job-trigger" onclick="showInlineJob()"><i class="ti ti-plus"></i>Add new job…</button>`;
+    if (!cust) html += `<p style="font-size:12px;color:var(--text3);padding:6px 2px">Tip: select a customer first to filter jobs</p>`;
+    html += `</div>`;
+  } else if (step.type === 'markup') {
+    const def = (_settings.defaultMarkup) || 20;
+    const val = wizardData.markupPct !== undefined ? wizardData.markupPct : def;
+    html += `<div><label class="field-label">Markup %</label><input type="number" id="ws-markup" value="${val}" min="0" max="500" inputmode="numeric"></div>
+    <div class="markup-preview">$${(wizardData.amount || 0).toFixed(2)} cost → billed at <strong id="markup-calc">$${(wizardData.amount * (1 + val / 100)).toFixed(2)}</strong></div>`;
+  } else if (step.type === 'vendor') {
+    const prevVendors = _vendors;
+    const currentVal = wizardData.vendor || '';
+    html += `<div style="display:flex;flex-direction:column;gap:10px">
+      <div style="position:relative">
+        <input type="text" id="ws-vendor-input" placeholder="Type vendor name or pick below…"
+          value="${currentVal}"
+          oninput="filterVendorSuggestions(this.value)"
+          style="padding-right:36px">
+        <i class="ti ti-x" onclick="clearVendorInput()"
+          style="position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text3);cursor:pointer;font-size:18px"></i>
+      </div>`;
+    if (prevVendors.length > 0) {
+      html += `<div>
+        <p class="filter-label" style="margin-bottom:6px">Previously used</p>
+        <div class="choice-list" id="vendor-suggestion-list">`;
+      prevVendors.forEach(v => {
+        const sel = currentVal === v ? 'sel' : '';
+        html += `<button class="choice-btn ${sel}" onclick="pickVendor('${v.replace(/'/g, "\'")}')">
+          <i class="ti ti-building-store"></i>${v}
+        </button>`;
+      });
+      html += `</div></div>`;
+    } else {
+      html += `<p style="font-size:13px;color:var(--text3)">No previous vendors yet — type a name above.</p>`;
+    }
+    html += `</div>`;
+  } else if (step.type === 'text') {
+    html += `<div><textarea id="ws-text" rows="4" placeholder="${step.placeholder || ''}">${wizardData[step.key] || ''}</textarea></div>`;
+  } else if (step.type === 'confirm') {
+    html += buildConfirmHTML();
+  }
+
+  html += `</div>`;
+
+  // Bottom bar
+  let bar = `<div class="bottom-bar">`;
+  if (wizardStep > 0) bar += `<button class="btn-secondary" onclick="wizardBack()"><i class="ti ti-arrow-left"></i></button>`;
+  if (step.type === 'confirm') {
+    bar += `<button class="btn-primary" onclick="saveEntry()"><i class="ti ti-check"></i> Save entry</button>`;
+  } else {
+    if (step.optional) bar += `<button class="btn-secondary" onclick="wizardNext(true)">Skip</button>`;
+    bar += `<button class="btn-primary" onclick="wizardNext()">Next <i class="ti ti-arrow-right"></i></button>`;
+  }
+  bar += `</div>`;
+
+  document.getElementById('wizard-body').innerHTML = html + bar;
+
+  // Post-render
+  if (step.type === 'amount') {
+    const inp = document.getElementById('ws-amount');
+    if (inp) setTimeout(() => inp.focus(), 80);
+  }
+  if (step.type === 'miles') {
+    const inp = document.getElementById('ws-miles');
+    if (inp) {
+      inp.addEventListener('input', () => {
+        const v = parseFloat(inp.value) || 0;
+        document.getElementById('miles-calc').textContent = '$' + (v * IRS_RATE).toFixed(2);
+      });
+      inp.dispatchEvent(new Event('input'));
+      setTimeout(() => inp.focus(), 80);
+    }
+  }
+  if (step.type === 'markup') {
+    const inp = document.getElementById('ws-markup');
+    if (inp) {
+      inp.addEventListener('input', () => {
+        const pct = parseFloat(inp.value) || 0;
+        const billed = (wizardData.amount * (1 + pct / 100)).toFixed(2);
+        document.getElementById('markup-calc').textContent = '$' + billed;
+      });
+    }
+  }
+}
+
+function choicePick(key, val, btn) {
+  wizardData[key] = val;
+  btn.closest('.choice-list').querySelectorAll('.choice-btn').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+  if (key !== 'customer' && key !== 'jobId') setTimeout(() => wizardNext(), 200);
+}
+
+function wizardNext(skip = false) {
+  const steps = activeSteps();
+  const step = steps[wizardStep];
+  if (!skip) {
+    if (step.type === 'amount') {
+      const v = parseFloat(document.getElementById('ws-amount')?.value);
+      if (!v || v <= 0) { alert('Please enter a valid amount.'); return; }
+      wizardData.amount = v;
+    } else if (step.type === 'miles') {
+      const v = parseFloat(document.getElementById('ws-miles')?.value);
+      if (!v || v <= 0) { alert('Please enter miles driven.'); return; }
+      wizardData.miles = v;
+    } else if (step.type === 'text') {
+      if (step.type === 'vendor') {
+        wizardData.vendor = document.getElementById('ws-vendor-input')?.value?.trim() || '';
+      } else {
+        wizardData[step.key] = document.getElementById('ws-text')?.value || '';
+      }
+    } else if (step.type === 'markup') {
+      wizardData.markupPct = parseFloat(document.getElementById('ws-markup')?.value) || 20;
+    } else if (step.type === 'choice' || step.type === 'customer') {
+      if (!wizardData[step.key] && !step.optional) { alert('Please make a selection.'); return; }
+    }
+  }
+  wizardStep = Math.min(wizardStep + 1, steps.length - 1);
+  renderStep();
+}
+
+function wizardBack() {
+  if (wizardStep === 0) { showScreen('screen-home'); return; }
+  wizardStep--;
+  renderStep();
+}
+
+function showInlineCustomer() {
+  const wrap = document.getElementById("new-cust-inline");
+  const trigger = document.getElementById("new-cust-trigger");
+  if (wrap) { wrap.style.display = "flex"; wrap.style.flexDirection = "column"; }
+  if (trigger) trigger.style.display = "none";
+  setTimeout(() => document.getElementById("new-cust-input")?.focus(), 80);
+}
+
+function cancelInlineCustomer() {
+  const wrap = document.getElementById("new-cust-inline");
+  const trigger = document.getElementById("new-cust-trigger");
+  if (wrap) wrap.style.display = "none";
+  if (trigger) trigger.style.display = "flex";
+}
+
+function confirmInlineCustomer() {
+  const inp = document.getElementById("new-cust-input");
+  const name = inp?.value?.trim();
+  if (!name) { inp?.focus(); return; }
+  if (!_customers.includes(name)) {
+    _customers.push(name);
+    apiPost({ action: 'saveCustomers', customers: _customers }).catch(() => showToast('Sync failed', 'error'));
+  }
+  wizardData.customer = name;
+  renderStep();
+}
+
+function showInlineJob() {
+  const wrap = document.getElementById('new-job-inline');
+  const trigger = document.getElementById('new-job-trigger');
+  if (wrap) { wrap.style.display = 'flex'; wrap.style.flexDirection = 'column'; }
+  if (trigger) trigger.style.display = 'none';
+  setTimeout(() => document.getElementById('new-job-input')?.focus(), 80);
+}
+function cancelInlineJob() {
+  const wrap = document.getElementById('new-job-inline');
+  const trigger = document.getElementById('new-job-trigger');
+  if (wrap) wrap.style.display = 'none';
+  if (trigger) trigger.style.display = 'flex';
+}
+function confirmInlineJob() {
+  const inp = document.getElementById('new-job-input');
+  const name = inp?.value?.trim();
+  if (!name) { inp?.focus(); return; }
+  const locInp = document.getElementById('new-job-location');
+  const location = locInp?.value?.trim() || '';
+  const cust = wizardData.customer && wizardData.customer !== 'No customer' ? wizardData.customer : '';
+  const id = Date.now().toString();
+  _jobs.push({ id, name, location, customer: cust });
+  apiPost({ action: 'saveJobs', jobs: _jobs }).catch(() => showToast('Sync failed', 'error'));
+  wizardData.jobId = id;
+  renderStep();
+}
+function jobName(id) {
+  if (!id) return '';
+  const j = _jobs.find(j => j.id === id);
+  return j ? j.name : '';
+}
+function jobLocation(id) {
+  if (!id) return '';
+  const j = _jobs.find(j => j.id === id);
+  return j ? (j.location || '') : '';
+}
+
+function buildConfirmHTML() {
+  let rows = '';
+  if (wizardData.amount) rows += cr('Amount', '$' + parseFloat(wizardData.amount).toFixed(2));
+  if (wizardData.miles) rows += cr('Miles', wizardData.miles + ' mi → $' + (wizardData.miles * IRS_RATE).toFixed(2));
+  if (wizardData.payMethod) rows += cr('Payment', wizardData.payMethod);
+  if (wizardData.category) rows += cr('Category', wizardData.category);
+  if (wizardData.vendor) rows += cr('Vendor', wizardData.vendor);
+  if (wizardData.reimbursable && wizardData.reimbursable !== 'No') rows += cr('Reimbursable', `<span class="tag reimb">${wizardData.reimbursable}</span>`);
+  if (wizardData.markupPct) rows += cr('Markup', `<span class="tag markup">${wizardData.markupPct}% → $${(wizardData.amount * (1 + wizardData.markupPct / 100)).toFixed(2)}</span>`);
+  if (wizardData.customer && wizardData.customer !== 'No customer') rows += cr('Customer', wizardData.customer);
+  if (wizardData.jobId) {
+    rows += cr('Job', jobName(wizardData.jobId));
+    const jloc = jobLocation(wizardData.jobId);
+    if (jloc) rows += cr('Location', '<i class="ti ti-map-pin" style="font-size:12px;color:var(--brand)"></i> ' + jloc);
+  }
+  if (wizardData.description) rows += cr('Notes', wizardData.description);
+  const totalLabel = wizardType === 'income' ? 'Income' : wizardType === 'expense' ? 'Expense' : 'Mileage deduction';
+  const totalVal = wizardType === 'mileage' ? '$' + (wizardData.miles * IRS_RATE).toFixed(2) : '$' + parseFloat(wizardData.amount || 0).toFixed(2);
+  return `<div class="confirm-card">${rows}<div style="border-top:1px solid var(--border);margin-top:8px;padding-top:12px"><div class="confirm-total"><span>${totalLabel}</span><span class="ct">${totalVal}</span></div></div></div>`;
+}
+
+function cr(k, v) {
+  return `<div class="confirm-row"><span class="confirm-key">${k}</span><span class="confirm-val">${v}</span></div>`;
+}
+
+async function saveEntry() {
+  const entry = {
+    id: Date.now().toString(),
+    type: wizardType,
+    date: new Date().toISOString(),
+    amount: parseFloat(wizardData.amount) || 0,
+    miles: wizardData.miles || 0,
+    category: wizardData.category || '',
+    payMethod: wizardData.payMethod || '',
+    reimbursable: wizardData.reimbursable || 'No',
+    markupPct: wizardData.markupPct || 0,
+    customer: wizardData.customer || '',
+    description: wizardData.description || '',
+    vendor: wizardData.vendor || '',
+    jobId: wizardData.jobId || ''
+  };
+
+  // Optimistic: add locally first
+  _entries.unshift(entry);
+  if (entry.vendor) addVendorToHistory(entry.vendor);
+
+  document.getElementById('succ-title').textContent = wizardType === 'income' ? 'Income saved!' : wizardType === 'expense' ? 'Expense saved!' : 'Mileage saved!';
+  document.getElementById('succ-amount').textContent = wizardType === 'mileage'
+    ? entry.miles + ' mi'
+    : '$' + entry.amount.toFixed(2);
+  document.getElementById('succ-sub').textContent = wizardType === 'mileage'
+    ? 'Deduction: $' + (entry.miles * IRS_RATE).toFixed(2)
+    : wizardType === 'expense' && entry.category ? entry.category : '';
+  showScreen('screen-success');
+
+  // Background sync
+  if (!navigator.onLine) {
+    queueOffline('addEntry', { entry });
+    showToast("You're offline — will sync when reconnected");
+    return;
+  }
+  try {
+    await apiPost({ action: 'addEntry', entry });
+  } catch(e) {
+    _entries = _entries.filter(x => x.id !== entry.id);
+    showToast('Sync failed — entry removed, try again', 'error');
+  }
+}
+
+// --- REPORTS ---
+function setReportPeriod(p, btn) {
+  reportPeriod = p;
+  document.querySelectorAll('.rtab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  refreshReports();
+}
+
+function setReportCustomer(c) {
+  reportCustomer = c;
+  reportJob = '';  // reset job when customer changes
+  refreshReports();
+}
+
+function setReportJob(j) {
+  reportJob = j;
+  refreshReports();
+}
+
+function clearAllReportFilters() {
+  reportCustomer = '';
+  reportJob = '';
+  refreshReports();
+}
+
+function filterEntries(d) {
+  const now = new Date();
+  return d.filter(e => {
+    const dt = new Date(e.date);
+    // period filter
+    if (reportPeriod === 'week' && (now - dt) / 86400000 > 7) return false;
+    if (reportPeriod === 'month' && (dt.getMonth() !== now.getMonth() || dt.getFullYear() !== now.getFullYear())) return false;
+    if (reportPeriod === 'ytd' && dt.getFullYear() !== now.getFullYear()) return false;
+    // customer filter
+    if (reportCustomer && (e.customer || '') !== reportCustomer) return false;
+    // job filter
+    if (reportJob && (e.jobId || '') !== reportJob) return false;
+    return true;
+  });
+}
+
+function buildCustomerPills() {
+  const custs = _customers;
+  const el = document.getElementById('r-customer-pills');
+  if (!el) return;
+  let pills = `<button class="pill ${reportCustomer === '' ? 'active' : ''}" onclick="setReportCustomer('')">All</button>`;
+  custs.forEach(c => {
+    pills += `<button class="pill ${reportCustomer === c ? 'active' : ''}" onclick="setReportCustomer('${c.replace(/'/g, "\'")}')">${c}</button>`;
+  });
+  el.innerHTML = pills;
+}
+
+function buildJobPills() {
+  const allJobs = _jobs;
+  const jobs = reportCustomer ? allJobs.filter(j => j.customer === reportCustomer) : allJobs;
+  const row = document.getElementById('r-job-filter-row');
+  const el = document.getElementById('r-job-pills');
+  if (!el) return;
+  if (jobs.length === 0) { row.style.display = 'none'; return; }
+  row.style.display = 'flex';
+  let pills = `<button class="pill ${reportJob === '' ? 'active' : ''}" onclick="setReportJob('')">All jobs</button>`;
+  jobs.forEach(j => {
+    pills += `<button class="pill ${reportJob === j.id ? 'active' : ''}" onclick="setReportJob('${j.id}')">${j.name}${j.location ? ' · '+j.location : ''}</button>`;
+  });
+  el.innerHTML = pills;
+}
+
+function updateFilterBanner() {
+  const banner = document.getElementById('r-filter-banner');
+  const text = document.getElementById('r-filter-banner-text');
+  if (!banner || !text) return;
+  const parts = [];
+  if (reportCustomer) parts.push('Customer: ' + reportCustomer);
+  if (reportJob) parts.push('Job: ' + jobName(reportJob));
+  if (parts.length > 0) {
+    text.textContent = parts.join('  ·  ');
+    banner.classList.add('visible');
+  } else {
+    banner.classList.remove('visible');
+  }
+  // hide schedule C when filtering by customer or job (not meaningful at that level)
+  const schedCBlock = document.getElementById('r-schedC-block');
+  if (schedCBlock) schedCBlock.style.display = (reportCustomer || reportJob) ? 'none' : 'block';
+}
+
+function refreshReports() {
+  buildCustomerPills();
+  buildJobPills();
+  updateFilterBanner();
+  const d = filterEntries(_entries);
+  const income = d.filter(e => e.type === 'income').reduce((s, e) => s + e.amount, 0);
+  const expense = d.filter(e => e.type === 'expense').reduce((s, e) => s + e.amount, 0);
+  const miles = d.filter(e => e.type === 'mileage').reduce((s, e) => s + e.miles, 0);
+  const milDed = miles * IRS_RATE;
+  const net = income - expense - milDed;
+
+  document.getElementById('r-income').textContent = '$' + income.toFixed(2);
+  document.getElementById('r-expense').textContent = '$' + expense.toFixed(2);
+  document.getElementById('r-mil-ded2').textContent = '$' + milDed.toFixed(2);
+  const netEl = document.getElementById('r-net2');
+  netEl.textContent = '$' + Math.abs(net).toFixed(2);
+  netEl.className = 'rv ' + (net >= 0 ? 'val-green' : 'val-red');
+  document.getElementById('r-miles2').textContent = miles.toFixed(1) + ' mi';
+  document.getElementById('r-mil-ded3').textContent = '$' + milDed.toFixed(2);
+
+  // Cat breakdown
+  const cats = {};
+  d.filter(e => e.type === 'expense').forEach(e => { const c = e.category || 'Other'; cats[c] = (cats[c] || 0) + e.amount; });
+  const catEl = document.getElementById('r-cat-breakdown');
+  catEl.innerHTML = Object.keys(cats).length === 0
+    ? '<div style="padding:14px;font-size:13px;color:var(--text3)">No expenses yet</div>'
+    : Object.entries(cats).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<div class="report-row"><span class="rk">${k}</span><span class="rv">$${v.toFixed(2)}</span></div>`).join('');
+
+  // Reimbursable
+  const reimb = d.filter(e => e.type === 'expense' && e.reimbursable && e.reimbursable !== 'No');
+  const rCost = reimb.reduce((s, e) => s + e.amount, 0);
+  const rMkup = reimb.reduce((s, e) => s + (e.markupPct > 0 ? e.amount * (1 + e.markupPct / 100) : e.amount), 0);
+  document.getElementById('r-reimb-cost2').textContent = '$' + rCost.toFixed(2);
+  document.getElementById('r-reimb-markup2').textContent = '$' + rMkup.toFixed(2);
+
+  // Schedule C
+  const sched = { 'Advertising': 0, 'Tools & Equipment': 0, 'Materials': 0, 'Insurance': 0, 'Platform Fees (Angi)': 0, 'Fuel/Mileage': milDed, 'Subcontractors': 0, 'Other': 0 };
+  d.filter(e => e.type === 'expense').forEach(e => {
+    const c = e.category || 'Other';
+    if (sched[c] !== undefined) sched[c] += e.amount;
+    else sched['Other'] += e.amount;
+  });
+  const scEl = document.getElementById('r-schedule-c');
+  const scRows = Object.entries(sched).filter(([, v]) => v > 0);
+  scEl.innerHTML = scRows.length === 0
+    ? '<div style="padding:14px;font-size:13px;color:var(--text3)">No data yet</div>'
+    : scRows.map(([k, v]) => `<div class="report-row"><span class="rk">${k}</span><span class="rv">$${v.toFixed(2)}</span></div>`).join('');
+}
+
+// ─── HISTORY ──────────────────────────────────────────────────────────────────
+function refreshHistory() {
+  const query = (document.getElementById('history-search')?.value || '').toLowerCase();
+  const d = _entries.filter(e => {
+    if (!query) return true;
+    return (e.description || '').toLowerCase().includes(query) ||
+      (e.customer || '').toLowerCase().includes(query) ||
+      jobName(e.jobId || '').toLowerCase().includes(query) ||
+      (e.category || '').toLowerCase().includes(query);
+  });
+  const el = document.getElementById('history-list');
+  el.innerHTML = d.length === 0
+    ? '<div class="empty-state"><i class="ti ti-inbox"></i><p>No entries found</p></div>'
+    : d.map(e => entryHTML(e)).join('');
+  const btn = document.getElementById('load-older-btn');
+  if (btn) btn.style.display = _hasOlderEntries ? 'block' : 'none';
+}
+
+// ─── DETAIL ───────────────────────────────────────────────────────────────────
+function showDetail(id) {
+  const entry = _entries.find(e => e.id == id);
+  if (!entry) return;
+  currentDetailId = id;
+  document.getElementById('detail-title').textContent = entry.type.charAt(0).toUpperCase() + entry.type.slice(1) + ' detail';
+  let rows = '';
+  const dt = new Date(entry.date);
+  rows += dr('Date', dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }));
+  if (entry.amount) rows += dr('Amount', '$' + entry.amount.toFixed(2));
+  if (entry.miles) rows += dr('Miles', entry.miles + ' mi → $' + (entry.miles * IRS_RATE).toFixed(2) + ' deduction');
+  if (entry.payMethod) rows += dr('Payment', entry.payMethod);
+  if (entry.category) rows += dr('Category', entry.category);
+  if (entry.vendor) rows += dr('Vendor', entry.vendor);
+  if (entry.reimbursable && entry.reimbursable !== 'No') rows += dr('Reimbursable', entry.reimbursable);
+  if (entry.markupPct) rows += dr('Markup', entry.markupPct + '% → $' + (entry.amount * (1 + entry.markupPct / 100)).toFixed(2) + ' billed');
+  if (entry.customer && entry.customer !== 'No customer') rows += dr('Customer', entry.customer);
+  if (entry.jobId) {
+    rows += dr('Job', jobName(entry.jobId));
+    const jloc = jobLocation(entry.jobId);
+    if (jloc) rows += dr('Location', '<i class="ti ti-map-pin" style="font-size:12px;color:var(--brand)"></i> ' + jloc);
+  }
+  if (entry.description) rows += dr('Notes', entry.description);
+  document.getElementById('detail-body').innerHTML = rows;
+  document.getElementById('detail-delete-btn').onclick = () => deleteEntry(id);
+  document.getElementById('detail-read').style.display = 'block';
+  document.getElementById('detail-edit').style.display = 'none';
+  openModal('modal-detail');
+}
+
+function dr(k, v) {
+  return `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`;
+}
+
+async function deleteEntry(id) {
+  if (!confirm('Delete this entry?')) return;
+  const removed = _entries.find(e => e.id == id);
+  _entries = _entries.filter(e => e.id != id);
+  closeModal('modal-detail');
+  refreshHistory();
+  refreshHome();
+
+  if (!navigator.onLine) { queueOffline('deleteEntry', { id }); return; }
+  try {
+    await apiPost({ action: 'deleteEntry', id });
+  } catch(e) {
+    if (removed) _entries.unshift(removed);
+    showToast('Delete failed — entry restored', 'error');
+    refreshHistory(); refreshHome();
+  }
+}
+
+// ─── SETTINGS ─────────────────────────────────────────────────────────────────
+function refreshSettings() {
+  document.getElementById('s-markup-val').textContent = (_settings.defaultMarkup || 20) + '%';
+  document.getElementById('customer-chips').innerHTML = _customers.map((c, i) =>
+    `<div class="chip">${c}<i class="ti ti-x" onclick="removeCustomer(${i})"></i></div>`).join('') || '<span style="font-size:13px;color:var(--text3)">No customers yet</span>';
+  document.getElementById('job-chips').innerHTML = _jobs.map((j, i) =>
+    `<div class="chip" style="flex-direction:column;align-items:flex-start;border-radius:10px;gap:2px">
+      <span style="display:flex;align-items:center;gap:6px;width:100%">
+        <i class="ti ti-briefcase" style="font-size:12px;color:var(--brand)"></i>
+        <span style="flex:1;font-weight:500">${j.name}</span>
+        <i class="ti ti-x" style="font-size:14px;color:var(--danger);cursor:pointer" onclick="removeJob(${i})"></i>
+      </span>
+      ${j.customer ? `<span style="font-size:11px;color:var(--text3);padding-left:18px">${j.customer}</span>` : ''}
+      ${j.location ? `<span style="font-size:11px;color:var(--text3);padding-left:18px"><i class="ti ti-map-pin" style="font-size:10px"></i> ${j.location}</span>` : ''}
+    </div>`).join('') || '<span style="font-size:13px;color:var(--text3)">No jobs yet</span>';
+  const jmc = document.getElementById('new-job-modal-customer');
+  if (jmc) { jmc.innerHTML = '<option value="">No customer</option>' + _customers.map(c => `<option value="${c}">${c}</option>`).join(''); }
+  document.getElementById('category-chips').innerHTML = _categories.map((c, i) =>
+    `<div class="chip">${c}<i class="ti ti-x" onclick="removeCategory(${i})"></i></div>`).join('');
+}
+
+function savePin() {
+  const v = document.getElementById('new-pin-input').value.trim();
+  if (!/^\d{4}$/.test(v)) { alert('Please enter exactly 4 digits.'); return; }
+  _settings.pin = v;
+  setPinCache(v);
+  apiPost({ action: 'saveSettings', settings: _settings }).catch(() => showToast('Sync failed', 'error'));
+  closeModal('modal-pin');
+  showToast('PIN updated', 'success');
+}
+
+function saveMarkup() {
+  const v = parseFloat(document.getElementById('markup-input').value);
+  if (isNaN(v) || v < 0) { alert('Enter a valid number.'); return; }
+  _settings.defaultMarkup = v;
+  apiPost({ action: 'saveSettings', settings: _settings }).catch(() => showToast('Sync failed', 'error'));
+  closeModal('modal-markup');
+  refreshSettings();
+}
+
+function addCustomer() {
+  const v = document.getElementById('new-customer-input').value.trim();
+  if (!v) return;
+  if (!_customers.includes(v)) {
+    _customers.push(v);
+    apiPost({ action: 'saveCustomers', customers: _customers }).catch(() => showToast('Sync failed', 'error'));
+  }
+  document.getElementById('new-customer-input').value = '';
+  closeModal('modal-addcustomer');
+  refreshSettings();
+}
+
+function addJobFromSettings() {
+  const name = document.getElementById('new-job-modal-input').value.trim();
+  if (!name) return;
+  const loc  = document.getElementById('new-job-modal-location').value.trim() || '';
+  const cust = document.getElementById('new-job-modal-customer').value || '';
+  const id = Date.now().toString();
+  _jobs.push({ id, name, location: loc, customer: cust });
+  apiPost({ action: 'saveJobs', jobs: _jobs }).catch(() => showToast('Sync failed', 'error'));
+  document.getElementById('new-job-modal-input').value = '';
+  document.getElementById('new-job-modal-location').value = '';
+  closeModal('modal-addjob');
+  refreshSettings();
+}
+
+function removeJob(i) {
+  _jobs.splice(i, 1);
+  apiPost({ action: 'saveJobs', jobs: _jobs }).catch(() => showToast('Sync failed', 'error'));
+  refreshSettings();
+}
+
+function removeCustomer(i) {
+  _customers.splice(i, 1);
+  apiPost({ action: 'saveCustomers', customers: _customers }).catch(() => showToast('Sync failed', 'error'));
+  refreshSettings();
+}
+
+function addCategory() {
+  const v = document.getElementById('new-cat-input').value.trim();
+  if (!v) return;
+  if (!_categories.includes(v)) {
+    _categories.push(v);
+    apiPost({ action: 'saveCategories', categories: _categories }).catch(() => showToast('Sync failed', 'error'));
+  }
+  document.getElementById('new-cat-input').value = '';
+  closeModal('modal-addcat');
+  refreshSettings();
+}
+
+function removeCategory(i) {
+  _categories.splice(i, 1);
+  apiPost({ action: 'saveCategories', categories: _categories }).catch(() => showToast('Sync failed', 'error'));
+  refreshSettings();
+}
+
+function clearAllData() {
+  if (!confirm('This clears your local session. Data in Google Sheets is preserved and will reload on next login.')) return;
+  _entries = []; _customers = []; _jobs = []; _categories = [...DEFAULT_CATS];
+  _vendors = []; _settings = { pin: '1234', defaultMarkup: 20 };
+  _hasOlderEntries = false; _oldestLoadedDate = null; _dataLoaded = false;
+  try { localStorage.removeItem('as_pin_cache'); localStorage.removeItem('as_sync_queue'); } catch(e) {}
+  closeModal('modal-clear');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-pin').classList.add('active');
+}
+
+// ─── EXPORT / SYNC ────────────────────────────────────────────────────────────
+function syncToSheets() {
+  try {
+    const q = JSON.parse(localStorage.getItem('as_sync_queue') || '[]');
+    if (q.length > 0) {
+      flushSyncQueue().then(() => showToast('Sync complete!', 'success'));
+    } else {
+      showToast('All data is synced to Google Sheets', 'success');
+    }
+  } catch(e) { showToast('Sync check failed', 'error'); }
+}
+
+function exportCSV() {
+  const d = _entries;
+  if (!d.length) { alert('No data to export yet.'); return; }
+  const header = 'Date,Type,Amount,Miles,MileageDeduction,Category,PaymentMethod,Customer,Job,JobLocation,Reimbursable,MarkupPct,BilledAmount,Description,Vendor';
+  const rows = d.map(e => {
+    const ded = e.miles ? (e.miles * IRS_RATE).toFixed(2) : '';
+    const billed = e.markupPct > 0 ? (e.amount * (1 + e.markupPct / 100)).toFixed(2) : '';
+    return [
+      new Date(e.date).toLocaleDateString(),
+      e.type, e.amount || '', e.miles || '', ded,
+      e.category, e.payMethod, e.customer,
+      '"' + jobName(e.jobId || '') + '"',
+      '"' + jobLocation(e.jobId || '') + '"',
+      e.reimbursable, e.markupPct || '', billed,
+      '"' + (e.description || '').replace(/"/g, '""') + '"',
+      '"' + (e.vendor || '').replace(/"/g, '""') + '"'
+    ].join(',');
+  });
+  const csv = [header, ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'activate_solutions_' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+}
+
+
+// --- MODALS ---
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeAllModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('open')); }
+function closeModalOutside(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+
+
+// ─── EDIT ENTRY ───────────────────────────────────────────────────────────────
+function startEditEntry() {
+  const entry = _entries.find(e => e.id == currentDetailId);
+  if (!entry) return;
+  document.getElementById('detail-read').style.display = 'none';
+  document.getElementById('detail-edit').style.display = 'block';
+  const cats = _categories;
+  const custs = _customers;
+  const isIncome = entry.type === 'income';
+  const isExpense = entry.type === 'expense';
+  const isMileage = entry.type === 'mileage';
+
+  let html = '';
+
+  if (isIncome || isExpense) {
+    html += `<div>
+      <label class="field-label">Amount ($)</label>
+      <input type="number" id="edit-amount" value="${entry.amount}" inputmode="decimal" step="0.01">
+    </div>`;
+  }
+  if (isMileage) {
+    html += `<div>
+      <label class="field-label">Miles driven</label>
+      <input type="number" id="edit-miles" value="${entry.miles}" inputmode="decimal">
+    </div>
+    <div class="markup-preview" id="edit-miles-preview">Deduction: $${(entry.miles * IRS_RATE).toFixed(2)}</div>`;
+  }
+  if (isIncome) {
+    html += `<div>
+      <label class="field-label">Payment method</label>
+      <select id="edit-paymethod">
+        ${['Cash','Check','Venmo','Cash App'].map(m => `<option value="${m}" ${entry.payMethod === m ? 'selected' : ''}>${m}</option>`).join('')}
+      </select>
+    </div>`;
+  }
+  if (isExpense) {
+    html += `<div>
+      <label class="field-label">Category</label>
+      <select id="edit-category">
+        ${cats.map(c => `<option value="${c}" ${entry.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+      </select>
+    </div>
+    <div>
+      <label class="field-label">Vendor</label>
+      <input type="text" id="edit-vendor" value="${entry.vendor || ''}" placeholder="e.g. Home Depot, Lowe's, Amazon">
+    </div>
+    <div>
+      <label class="field-label">Reimbursable?</label>
+      <select id="edit-reimbursable">
+        <option value="No" ${entry.reimbursable === 'No' ? 'selected' : ''}>No</option>
+        <option value="Yes — at cost" ${entry.reimbursable === 'Yes — at cost' ? 'selected' : ''}>Yes — at cost</option>
+        <option value="Yes — with markup" ${entry.reimbursable === 'Yes — with markup' ? 'selected' : ''}>Yes — with markup</option>
+      </select>
+    </div>
+    <div id="edit-markup-wrap" style="${entry.reimbursable === 'Yes — with markup' ? '' : 'display:none'}">
+      <label class="field-label">Markup %</label>
+      <input type="number" id="edit-markup" value="${entry.markupPct || 20}" inputmode="numeric" min="0" max="500">
+      <div class="markup-preview" style="margin-top:6px">Billed: <strong id="edit-markup-preview">$${(entry.amount * (1 + (entry.markupPct||0) / 100)).toFixed(2)}</strong></div>
+    </div>`;
+  }
+
+  // Customer + Job for all types
+  html += `<div>
+    <label class="field-label">Customer</label>
+    <select id="edit-customer" onchange="updateEditJobList()">
+      <option value="No customer" ${!entry.customer || entry.customer === 'No customer' ? 'selected' : ''}>No customer</option>
+      ${custs.map(c => `<option value="${c}" ${entry.customer === c ? 'selected' : ''}>${c}</option>`).join('')}
+    </select>
+  </div>`;
+  const allJobsEdit = _jobs;
+  const entryJobCust = entry.customer && entry.customer !== 'No customer' ? entry.customer : null;
+  const filteredJobs = entryJobCust ? allJobsEdit.filter(j => j.customer === entryJobCust) : allJobsEdit;
+  html += `<div>
+    <label class="field-label">Job</label>
+    <select id="edit-job" onchange="updateEditLocationPreview()">
+      <option value="">No specific job</option>
+      ${filteredJobs.map(j => `<option value="${j.id}" ${entry.jobId === j.id ? 'selected' : ''}>${j.name}${j.location ? ' — '+j.location : ''}</option>`).join('')}
+    </select>
+  </div>`;
+  const initLoc = jobLocation(entry.jobId || '');
+  html += `<div id="edit-location-preview" style="${initLoc ? '' : 'display:none'}">
+    <label class="field-label">Job location</label>
+    <div class="markup-preview"><i class="ti ti-map-pin" style="font-size:13px;color:var(--brand)"></i> <span id="edit-location-text">${initLoc}</span></div>
+  </div>`;
+
+  html += `<div>
+    <label class="field-label">Notes / description</label>
+    <textarea id="edit-description" rows="3">${entry.description || ''}</textarea>
+  </div>`;
+
+  document.getElementById('edit-form-body').innerHTML = html;
+
+  // Wire up live previews
+  const milesInp = document.getElementById('edit-miles');
+  if (milesInp) {
+    milesInp.addEventListener('input', () => {
+      const v = parseFloat(milesInp.value) || 0;
+      document.getElementById('edit-miles-preview').textContent = 'Deduction: $' + (v * IRS_RATE).toFixed(2);
+    });
+  }
+  const reimb = document.getElementById('edit-reimbursable');
+  if (reimb) {
+    reimb.addEventListener('change', () => {
+      const wrap = document.getElementById('edit-markup-wrap');
+      if (wrap) wrap.style.display = reimb.value === 'Yes — with markup' ? 'block' : 'none';
+    });
+  }
+  const markupInp = document.getElementById('edit-markup');
+  const amtInp = document.getElementById('edit-amount');
+  if (markupInp && amtInp) {
+    const updateMarkupPreview = () => {
+      const pct = parseFloat(markupInp.value) || 0;
+      const amt = parseFloat(amtInp.value) || 0;
+      const el = document.getElementById('edit-markup-preview');
+      if (el) el.textContent = '$' + (amt * (1 + pct / 100)).toFixed(2);
+    };
+    markupInp.addEventListener('input', updateMarkupPreview);
+    amtInp.addEventListener('input', updateMarkupPreview);
+  }
+}
+
+function cancelEditEntry() {
+  document.getElementById('detail-read').style.display = 'block';
+  document.getElementById('detail-edit').style.display = 'none';
+}
+
+async function saveEditEntry() {
+  const idx = _entries.findIndex(e => e.id == currentDetailId);
+  if (idx === -1) return;
+  const oldEntry = { ..._entries[idx] };
+  const entry = { ..._entries[idx] };
+
+  const amtEl = document.getElementById('edit-amount');
+  const milesEl = document.getElementById('edit-miles');
+  const payEl = document.getElementById('edit-paymethod');
+  const catEl = document.getElementById('edit-category');
+  const reimbEl = document.getElementById('edit-reimbursable');
+  const markupEl = document.getElementById('edit-markup');
+  const custEl = document.getElementById('edit-customer');
+  const descEl = document.getElementById('edit-description');
+
+  if (amtEl) {
+    const v = parseFloat(amtEl.value);
+    if (!v || v <= 0) { alert('Please enter a valid amount.'); amtEl.focus(); return; }
+    entry.amount = v;
+  }
+  if (milesEl) {
+    const v = parseFloat(milesEl.value);
+    if (!v || v <= 0) { alert('Please enter valid miles.'); milesEl.focus(); return; }
+    entry.miles = v;
+  }
+  if (payEl) entry.payMethod = payEl.value;
+  if (catEl) entry.category = catEl.value;
+  const vendorEl = document.getElementById('edit-vendor');
+  if (vendorEl !== null) entry.vendor = vendorEl.value.trim();
+  if (reimbEl) {
+    entry.reimbursable = reimbEl.value;
+    if (reimbEl.value !== 'Yes — with markup') entry.markupPct = 0;
+  }
+  if (markupEl && entry.reimbursable === 'Yes — with markup') entry.markupPct = parseFloat(markupEl.value) || 0;
+  if (custEl) entry.customer = custEl.value;
+  const jobEl = document.getElementById('edit-job');
+  if (jobEl !== null) entry.jobId = jobEl.value;
+  if (descEl) entry.description = descEl.value.trim();
+
+  _entries[idx] = entry;
+  if (entry.vendor) addVendorToHistory(entry.vendor);
+  closeModal('modal-detail');
+  refreshHome();
+  refreshHistory();
+
+  if (!navigator.onLine) { queueOffline('updateEntry', { entry }); return; }
+  try {
+    await apiPost({ action: 'updateEntry', entry });
+  } catch(e) {
+    _entries[idx] = oldEntry;
+    showToast('Update failed — changes reverted', 'error');
+    refreshHome(); refreshHistory();
+  }
+}
+
+function updateEditJobList() {
+  const custEl = document.getElementById('edit-customer');
+  const jobEl = document.getElementById('edit-job');
+  if (!custEl || !jobEl) return;
+  const cust = custEl.value !== 'No customer' ? custEl.value : null;
+  const allJ = _jobs;
+  const filtered = cust ? allJ.filter(j => j.customer === cust) : allJ;
+  jobEl.innerHTML = '<option value="">No specific job</option>' +
+    filtered.map(j => `<option value="${j.id}">${j.name}${j.location ? ' — '+j.location : ''}</option>`).join('');
+  updateEditLocationPreview();
+}
+function updateEditLocationPreview() {
+  const jobEl = document.getElementById('edit-job');
+  const preview = document.getElementById('edit-location-preview');
+  const text = document.getElementById('edit-location-text');
+  if (!jobEl || !preview || !text) return;
+  const loc = jobLocation(jobEl.value);
+  text.textContent = loc;
+  preview.style.display = loc ? 'block' : 'none';
+}
+
+function pickVendor(name) {
+  const inp = document.getElementById('ws-vendor-input');
+  if (inp) inp.value = name;
+  wizardData.vendor = name;
+  // highlight selected
+  document.querySelectorAll('#vendor-suggestion-list .choice-btn').forEach(b => {
+    b.classList.toggle('sel', b.textContent.trim() === name);
+  });
+}
+
+function clearVendorInput() {
+  const inp = document.getElementById('ws-vendor-input');
+  if (inp) { inp.value = ''; inp.focus(); }
+  wizardData.vendor = '';
+  filterVendorSuggestions('');
+}
+
+function filterVendorSuggestions(query) {
+  const list = document.getElementById('vendor-suggestion-list');
+  if (!list) return;
+  const q = query.toLowerCase().trim();
+  list.querySelectorAll('.choice-btn').forEach(btn => {
+    const label = btn.textContent.trim().toLowerCase();
+    btn.style.display = (!q || label.includes(q)) ? 'flex' : 'none';
+    btn.classList.toggle('sel', btn.textContent.trim() === query);
+  });
+}
+
+</script>
+</body>
+</html>
