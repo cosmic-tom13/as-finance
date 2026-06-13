@@ -2884,7 +2884,7 @@ function renderQuoteDetail() {
   const quote = _quotes.find(q => q.id === _currentQuoteId);
   if (!quote) return;
   const isDraft = quote.status === 'draft';
-  const isEditable = isDraft || quote.status === 'finalized' || quote.status === 'completed';
+  const isEditable = isDraft || quote.status === 'finalized' || quote.status === 'completed' || quote.status === 'paid';
   const total = (quote.lineItems || []).reduce((s, i) => s + (i.total || 0), 0);
   const paid = (quote.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
   const balance = total - paid;
