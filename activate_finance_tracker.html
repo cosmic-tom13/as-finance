@@ -3138,31 +3138,24 @@ function confirmDeleteQuote(id) {
 }
 
 // ─── PROPOSAL GENERATION ──────────────────────────────────────────────────────
-let _docxLoaded = false;
-let _docxLoadPromise = null;
+let _docxModule = null;
 
-function loadDocxLib() {
-  if (_docxLoaded) return Promise.resolve();
-  if (_docxLoadPromise) return _docxLoadPromise;
-  _docxLoadPromise = new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://unpkg.com/docx@8/build/index.js';
-    s.onload = () => { _docxLoaded = true; resolve(); };
-    s.onerror = () => reject(new Error('Failed to load docx library'));
-    document.head.appendChild(s);
-  });
-  return _docxLoadPromise;
+async function loadDocxLib() {
+  if (_docxModule) return _docxModule;
+  _docxModule = await import('https://esm.sh/docx@8');
+  return _docxModule;
 }
 
 async function generateProposal(id) {
   const quote = _quotes.find(q => q.id === id);
   if (!quote) return;
   showToast('Building proposal…');
-  try { await loadDocxLib(); }
+  let docxLib;
+  try { docxLib = await loadDocxLib(); }
   catch(e) { showToast('Could not load document library — check connection', 'error'); return; }
 
   const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-    AlignmentType, BorderStyle, WidthType, ShadingType, PageNumber, Footer } = window.docx;
+    AlignmentType, BorderStyle, WidthType, ShadingType, PageNumber, Footer } = docxLib;
 
   const job = _jobs.find(j => j.id === quote.jobId);
   const lineItems = quote.lineItems || [];
