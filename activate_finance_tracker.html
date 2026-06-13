@@ -1324,6 +1324,13 @@ let _currentQuoteId = null;
 let _quoteFilter = 'all';
 let _selectedPayMethod = null;
 
+// ─── GPS MILEAGE TRACKING ─────────────────────────────────────────────────────
+let _gpsWatchId = null;
+let _dailyMiles = 0;
+let _gpsDate = '';
+let _lastLat = null;
+let _lastLng = null;
+
 // ─── PIN CACHE (localStorage, available before data loads) ───────────────────
 function getPinCache() { try { return localStorage.getItem('as_pin_cache') || '1234'; } catch(e) { return '1234'; } }
 function setPinCache(p) { try { localStorage.setItem('as_pin_cache', p); } catch(e) {} }
@@ -1485,6 +1492,7 @@ function pinTap(k) {
           showToast('Could not reach server — working offline', 'error');
           _dataLoaded = true;
         }
+        startMileageTracking();
         showScreen('screen-home');
       } else {
         document.getElementById('pin-error').textContent = 'Incorrect PIN. Try again.';
@@ -1581,6 +1589,7 @@ async function tryBiometricLogin() {
     document.getElementById('screen-loading').classList.add('active');
     try { await loadInitialData(); }
     catch(e) { showToast('Could not reach server — working offline', 'error'); _dataLoaded = true; }
+    startMileageTracking();
     showScreen('screen-home');
   } catch(e) {
     if (bioBtn) {
@@ -2875,11 +2884,12 @@ function renderQuoteDetail() {
   const quote = _quotes.find(q => q.id === _currentQuoteId);
   if (!quote) return;
   const isDraft = quote.status === 'draft';
+  const isEditable = isDraft || quote.status === 'finalized';
   const total = (quote.lineItems || []).reduce((s, i) => s + (i.total || 0), 0);
   const paid = (quote.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
   const balance = total - paid;
   document.getElementById('qd-title').textContent = quote.title || 'Quote';
-  document.getElementById('qd-edit-btn').style.display = isDraft ? 'flex' : 'none';
+  document.getElementById('qd-edit-btn').style.display = isEditable ? 'flex' : 'none';
 
   let html = '';
   // Header card
@@ -2898,7 +2908,7 @@ function renderQuoteDetail() {
   html += `<div class="detail-section" style="margin-top:16px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <span style="font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3)">Line Items</span>
-      ${isDraft ? `<button class="btn-secondary" style="padding:6px 12px;font-size:13px" onclick="openAddLineItemModal()"><i class="ti ti-plus"></i> Add item</button>` : ''}
+      ${isEditable ? `<button class="btn-secondary" style="padding:6px 12px;font-size:13px" onclick="openAddLineItemModal()"><i class="ti ti-plus"></i> Add item</button>` : ''}
     </div>
     <div class="detail-card">
       ${(quote.lineItems || []).length === 0 ? '<p style="text-align:center;color:var(--text3);font-size:14px;padding:12px 0">No items yet</p>' :
@@ -2909,7 +2919,7 @@ function renderQuoteDetail() {
               <div class="line-item-meta">${item.qty} × ${$f(item.unitPrice)} ${item.unit ? '(' + item.unit + ')' : ''}</div>
             </div>
             <div class="line-item-total">${$f(item.total)}</div>
-            ${isDraft ? `<button class="line-item-del" onclick="removeLineItem('${quote.id}','${item.id}')"><i class="ti ti-x"></i></button>` : ''}
+            ${isEditable ? `<button class="line-item-del" onclick="removeLineItem('${quote.id}','${item.id}')"><i class="ti ti-x"></i></button>` : ''}
           </div>`).join('')}
     </div>
   </div>`;
@@ -2949,18 +2959,21 @@ function renderQuoteDetail() {
     actions = `<button class="btn-primary" style="flex:1" onclick="finalizeQuote('${quote.id}')">Finalize Quote</button>
       <button class="btn-secondary" style="color:var(--danger)" onclick="confirmDeleteQuote('${quote.id}')"><i class="ti ti-trash"></i></button>`;
   } else if (quote.status === 'finalized') {
-    actions = `<button class="btn-secondary" style="flex:1" onclick="markCompleted('${quote.id}')">Mark Completed</button>
+    actions = `<button class="btn-secondary" onclick="reopenQuote('${quote.id}')"><i class="ti ti-pencil"></i></button>
+      <button class="btn-secondary" style="flex:1" onclick="markCompleted('${quote.id}')">Mark Completed</button>
       <button class="btn-primary" style="flex:1" onclick="openRecordPaymentModal('${quote.id}')">Record Payment</button>`;
   } else if (quote.status === 'completed') {
-    actions = `<button class="btn-primary" style="flex:1" onclick="openRecordPaymentModal('${quote.id}')"><i class="ti ti-cash"></i> Record Payment</button>`;
+    actions = `<button class="btn-secondary" onclick="generateReceipt('${quote.id}')"><i class="ti ti-printer"></i></button>
+      <button class="btn-primary" style="flex:1" onclick="openRecordPaymentModal('${quote.id}')"><i class="ti ti-cash"></i> Record Payment</button>`;
   } else if (quote.status === 'paid') {
-    actions = `<div style="flex:1;text-align:center;color:var(--success);font-weight:600;font-size:14px"><i class="ti ti-circle-check"></i> Fully Paid</div>`;
+    actions = `<button class="btn-secondary" onclick="generateReceipt('${quote.id}')"><i class="ti ti-printer"></i></button>
+      <div style="flex:1;text-align:center;color:var(--success);font-weight:600;font-size:14px"><i class="ti ti-circle-check"></i> Fully Paid</div>`;
   }
   document.getElementById('qd-actions').innerHTML = actions;
 }
 
 function finalizeQuote(id) {
-  if (!confirm('Lock this quote? Line items cannot be edited after finalizing.')) return;
+  if (!confirm('Finalize this quote? You can still edit it or reopen it to draft if needed.')) return;
   const quote = _quotes.find(q => q.id === id);
   if (!quote) return;
   quote.status = 'finalized';
@@ -2977,6 +2990,140 @@ function markCompleted(id) {
   saveQuoteOptimistic(quote);
   renderQuoteDetail();
   showToast('Work marked as completed', 'success');
+  // GPS mileage prompt
+  loadDailyMiles();
+  const milesRounded = Math.round(_dailyMiles * 10) / 10;
+  if (milesRounded > 0 && confirm(`You drove approximately ${milesRounded} miles today — apply to this job?`)) {
+    const entry = {
+      id: String(Date.now()),
+      type: 'mileage',
+      date: new Date().toISOString(),
+      amount: 0,
+      miles: milesRounded,
+      category: '',
+      payMethod: '',
+      reimbursable: 'No',
+      markupPct: 0,
+      customer: quote.customer || 'No customer',
+      jobId: quote.jobId || '',
+      description: 'Mileage for ' + (quote.title || 'job'),
+      vendor: ''
+    };
+    _entries.unshift(entry);
+    apiPost({ action: 'addEntry', entry }).catch(() => showToast('Mileage sync failed', 'error'));
+    _dailyMiles = 0;
+    saveDailyMiles();
+    showToast(milesRounded + ' mi logged', 'success');
+  }
+}
+
+function reopenQuote(id) {
+  const quote = _quotes.find(q => q.id === id);
+  if (!quote) return;
+  if (!confirm('Reopen this quote as a draft? You can edit line items again.')) return;
+  quote.status = 'draft';
+  saveQuoteOptimistic(quote);
+  renderQuoteDetail();
+  showToast('Quote reopened as draft', 'success');
+}
+
+function generateReceipt(id) {
+  const quote = _quotes.find(q => q.id === id);
+  if (!quote) return;
+  const job = _jobs.find(j => j.id === quote.jobId);
+  const total = (quote.lineItems || []).reduce((s, i) => s + (i.total || 0), 0);
+  const paid = (quote.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+  const laborTotal = (quote.lineItems || []).filter(i => i.type === 'labor' || !i.type).reduce((s, i) => s + (i.total || 0), 0);
+  const materialsTotal = (quote.lineItems || []).filter(i => i.type === 'material').reduce((s, i) => s + (i.total || 0), 0);
+  const lastPayment = (quote.payments || []).slice(-1)[0];
+  const payMethod = lastPayment ? lastPayment.payMethod : (quote.paymentMethod || '');
+
+  const lineItemRows = (quote.lineItems || []).map(item => `
+    <tr>
+      <td style="padding:6px 0;border-bottom:1px solid #eee">${item.description}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">${item.qty}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center">${item.unit || ''}</td>
+      <td style="padding:6px 0;border-bottom:1px solid #eee;text-align:right">$${parseFloat(item.unitPrice||0).toFixed(2)}</td>
+      <td style="padding:6px 0 6px 12px;border-bottom:1px solid #eee;text-align:right">$${parseFloat(item.total||0).toFixed(2)}</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Receipt — ${quote.title || quote.customer}</title>
+<style>
+  body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; color: #222; margin: 0; padding: 0; }
+  .page { max-width: 680px; margin: 0 auto; padding: 40px 32px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px; border-bottom: 3px solid #1A7FAA; padding-bottom: 20px; }
+  .brand-name { font-size: 22px; font-weight: 700; color: #1A7FAA; }
+  .brand-sub { font-size: 13px; color: #666; margin-top: 2px; }
+  .receipt-meta { text-align: right; font-size: 13px; color: #555; line-height: 1.7; }
+  .receipt-title { font-size: 18px; font-weight: 700; color: #1A7FAA; margin-bottom: 4px; }
+  .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #888; margin: 24px 0 8px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-size: 13px; }
+  .info-row { display: flex; flex-direction: column; }
+  .info-lbl { font-size: 11px; color: #888; margin-bottom: 1px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  th { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #888; padding-bottom: 6px; border-bottom: 2px solid #1A7FAA; }
+  th:not(:first-child) { text-align: center; }
+  th:last-child, th:nth-last-child(2) { text-align: right; }
+  .totals { margin-top: 16px; margin-left: auto; width: 240px; font-size: 13px; }
+  .totals-row { display: flex; justify-content: space-between; padding: 4px 0; color: #555; }
+  .totals-grand { display: flex; justify-content: space-between; padding: 8px 0; font-weight: 700; font-size: 16px; color: #222; border-top: 2px solid #1A7FAA; margin-top: 4px; }
+  .warranty { margin-top: 32px; padding: 16px; background: #E6F4FA; border-radius: 8px; font-size: 12px; color: #555; line-height: 1.6; }
+  .footer { margin-top: 32px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 16px; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style></head><body>
+<div class="page">
+  <div class="header">
+    <div>
+      <div class="brand-name">Activate Solutions</div>
+      <div class="brand-sub">Handyman &amp; Smart Home Services</div>
+      <div class="brand-sub">San Antonio, TX &bull; 210-296-9294</div>
+    </div>
+    <div class="receipt-meta">
+      <div class="receipt-title">Work Receipt</div>
+      <div>Date: ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
+      ${quote.completedDate ? `<div>Completed: ${new Date(quote.completedDate).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>` : ''}
+      ${payMethod ? `<div>Payment: ${payMethod}</div>` : ''}
+    </div>
+  </div>
+
+  <div class="section-label">Bill To</div>
+  <div class="info-grid">
+    <div class="info-row"><span class="info-lbl">Customer</span><span>${quote.customer || '—'}</span></div>
+    ${job ? `<div class="info-row"><span class="info-lbl">Location</span><span>${job.location || job.name}</span></div>` : ''}
+    ${quote.title ? `<div class="info-row"><span class="info-lbl">Job Description</span><span>${quote.title}</span></div>` : ''}
+  </div>
+
+  <div class="section-label">Services &amp; Materials</div>
+  <table>
+    <thead><tr>
+      <th>Description</th><th>Qty</th><th>Unit</th><th>Unit Price</th><th style="padding-left:12px">Amount</th>
+    </tr></thead>
+    <tbody>${lineItemRows}</tbody>
+  </table>
+
+  <div class="totals">
+    ${laborTotal > 0 ? `<div class="totals-row"><span>Labor</span><span>$${laborTotal.toFixed(2)}</span></div>` : ''}
+    ${materialsTotal > 0 ? `<div class="totals-row"><span>Materials</span><span>$${materialsTotal.toFixed(2)}</span></div>` : ''}
+    <div class="totals-grand"><span>Total</span><span>$${total.toFixed(2)}</span></div>
+    ${paid > 0 ? `<div class="totals-row" style="color:#1D9E75"><span>Paid</span><span>$${paid.toFixed(2)}</span></div>` : ''}
+    ${(total - paid) > 0.01 ? `<div class="totals-row" style="font-weight:600;color:#D84040"><span>Balance Due</span><span>$${(total-paid).toFixed(2)}</span></div>` : ''}
+  </div>
+
+  ${quote.notes ? `<div class="section-label">Notes</div><p style="font-size:13px;color:#555">${quote.notes}</p>` : ''}
+
+  <div class="warranty">
+    <strong>30-Day Warranty:</strong> Activate Solutions warrants all labor and workmanship for a period of 30 days from the date of completion. This warranty covers defects in workmanship only. Materials are subject to manufacturer warranties. To request warranty service, contact us at 210-296-9294.
+  </div>
+
+  <div class="footer">Thank you for choosing Activate Solutions &bull; activatemysolution.com &bull; 210-296-9294</div>
+</div>
+<script>window.onload = function(){ window.print(); }<\/script>
+</body></html>`;
+
+  const w = window.open('', '_blank', 'width=750,height=900');
+  if (w) { w.document.write(html); w.document.close(); }
+  else showToast('Allow pop-ups to generate receipt', 'error');
 }
 
 function confirmDeleteQuote(id) {
@@ -3210,6 +3357,55 @@ async function deletePriceGuideItem() {
   closeModal('modal-price-guide-item');
   refreshSettings();
   apiPost({ action: 'savePriceGuide', priceGuide: _priceGuide }).catch(() => showToast('Sync failed', 'error'));
+}
+
+// ─── GPS MILEAGE TRACKING ─────────────────────────────────────────────────────
+function haversineDistance(lat1, lon1, lat2, lon2) {
+  const R = 3958.8;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function loadDailyMiles() {
+  try {
+    const data = JSON.parse(localStorage.getItem('as_daily_miles') || '{}');
+    const today = new Date().toISOString().slice(0, 10);
+    if (data.date === today) {
+      _dailyMiles = data.miles || 0;
+      _gpsDate = today;
+    } else {
+      _dailyMiles = 0;
+      _gpsDate = today;
+    }
+  } catch(e) { _dailyMiles = 0; _gpsDate = new Date().toISOString().slice(0, 10); }
+}
+
+function saveDailyMiles() {
+  try { localStorage.setItem('as_daily_miles', JSON.stringify({ date: _gpsDate, miles: _dailyMiles })); } catch(e) {}
+}
+
+function startMileageTracking() {
+  if (!navigator.geolocation) return;
+  loadDailyMiles();
+  _gpsWatchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      if (_lastLat !== null) {
+        const dist = haversineDistance(_lastLat, _lastLng, lat, lng);
+        if (dist > 0.01) { _dailyMiles += dist; saveDailyMiles(); }
+      }
+      _lastLat = lat; _lastLng = lng;
+    },
+    () => {},
+    { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 }
+  );
+}
+
+function stopMileageTracking() {
+  if (_gpsWatchId !== null) { navigator.geolocation.clearWatch(_gpsWatchId); _gpsWatchId = null; }
 }
 
 </script>
