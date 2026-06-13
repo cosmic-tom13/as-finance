@@ -1330,6 +1330,7 @@ let _dailyMiles = 0;
 let _gpsDate = '';
 let _lastLat = null;
 let _lastLng = null;
+let _geofenceNotified = {};
 
 // ─── PIN CACHE (localStorage, available before data loads) ───────────────────
 function getPinCache() { try { return localStorage.getItem('as_pin_cache') || '1234'; } catch(e) { return '1234'; } }
@@ -1493,6 +1494,8 @@ function pinTap(k) {
           _dataLoaded = true;
         }
         startMileageTracking();
+        requestNotificationPermission();
+        geocodeAllJobs();
         showScreen('screen-home');
       } else {
         document.getElementById('pin-error').textContent = 'Incorrect PIN. Try again.';
@@ -1590,6 +1593,8 @@ async function tryBiometricLogin() {
     try { await loadInitialData(); }
     catch(e) { showToast('Could not reach server — working offline', 'error'); _dataLoaded = true; }
     startMileageTracking();
+    requestNotificationPermission();
+    geocodeAllJobs();
     showScreen('screen-home');
   } catch(e) {
     if (bioBtn) {
@@ -3389,6 +3394,7 @@ function saveDailyMiles() {
 function startMileageTracking() {
   if (!navigator.geolocation) return;
   loadDailyMiles();
+  loadGeofenceState();
   _gpsWatchId = navigator.geolocation.watchPosition(
     (pos) => {
       const lat = pos.coords.latitude;
@@ -3398,6 +3404,7 @@ function startMileageTracking() {
         if (dist > 0.01) { _dailyMiles += dist; saveDailyMiles(); }
       }
       _lastLat = lat; _lastLng = lng;
+      checkGeofences(lat, lng);
     },
     () => {},
     { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 }
@@ -3406,6 +3413,94 @@ function startMileageTracking() {
 
 function stopMileageTracking() {
   if (_gpsWatchId !== null) { navigator.geolocation.clearWatch(_gpsWatchId); _gpsWatchId = null; }
+}
+
+// ─── GEOFENCE & NOTIFICATIONS ─────────────────────────────────────────────────
+function getGeocodeCache() {
+  try { return JSON.parse(localStorage.getItem('as_geocache') || '{}'); } catch(e) { return {}; }
+}
+function setGeocodeCache(cache) {
+  try { localStorage.setItem('as_geocache', JSON.stringify(cache)); } catch(e) {}
+}
+
+async function geocodeAddress(address) {
+  if (!address) return null;
+  const cache = getGeocodeCache();
+  const key = address.toLowerCase().trim();
+  const hit = cache[key];
+  if (hit && (Date.now() - hit.ts) < 30 * 24 * 3600 * 1000) return { lat: hit.lat, lng: hit.lng };
+  try {
+    const q = encodeURIComponent(address + ', San Antonio, TX');
+    const res = await fetch('https://nominatim.openstreetmap.org/search?q=' + q + '&format=json&limit=1', {
+      headers: { 'User-Agent': 'ActivateSolutionsFinanceApp/1.0 (tmcnish@activateyoursolution.com)' }
+    });
+    const data = await res.json();
+    if (data && data.length) {
+      const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), ts: Date.now() };
+      cache[key] = coords;
+      setGeocodeCache(cache);
+      return { lat: coords.lat, lng: coords.lng };
+    }
+  } catch(e) {}
+  return null;
+}
+
+async function geocodeAllJobs() {
+  const cache = getGeocodeCache();
+  const stale = 30 * 24 * 3600 * 1000;
+  const toGeocode = (_jobs || []).filter(j => {
+    if (!j.location) return false;
+    const hit = cache[j.location.toLowerCase().trim()];
+    return !hit || (Date.now() - hit.ts) > stale;
+  });
+  for (const job of toGeocode) {
+    await geocodeAddress(job.location);
+    await new Promise(r => setTimeout(r, 1200)); // Nominatim: 1 req/sec max
+  }
+}
+
+function loadGeofenceState() {
+  try {
+    const data = JSON.parse(localStorage.getItem('as_geofence_notified') || '{}');
+    const today = new Date().toISOString().slice(0, 10);
+    _geofenceNotified = {};
+    for (const [k, v] of Object.entries(data)) {
+      if (v === today) _geofenceNotified[k] = v;
+    }
+  } catch(e) { _geofenceNotified = {}; }
+}
+
+function markGeofenceNotified(jobId) {
+  _geofenceNotified[jobId] = new Date().toISOString().slice(0, 10);
+  try { localStorage.setItem('as_geofence_notified', JSON.stringify(_geofenceNotified)); } catch(e) {}
+}
+
+function checkGeofences(lat, lng) {
+  if (!_jobs || !_jobs.length || Notification.permission !== 'granted') return;
+  const cache = getGeocodeCache();
+  const RADIUS_MILES = 0.124; // ~200 meters
+  for (const job of _jobs) {
+    if (!job.location || _geofenceNotified[job.id]) continue;
+    const hit = cache[job.location.toLowerCase().trim()];
+    if (!hit) continue;
+    if (haversineDistance(lat, lng, hit.lat, hit.lng) < RADIUS_MILES) {
+      new Notification('Arriving at ' + job.name, {
+        body: 'Remember to log your work and update the quote for this job.',
+        icon: '/as-finance/icon-192.png',
+        tag: 'geofence-' + job.id
+      });
+      markGeofenceNotified(job.id);
+    }
+  }
+}
+
+async function requestNotificationPermission() {
+  if (!('Notification' in window) || Notification.permission !== 'default') return;
+  await Notification.requestPermission();
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/as-finance/sw.js').catch(() => {});
 }
 
 </script>
