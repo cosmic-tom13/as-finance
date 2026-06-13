@@ -3138,24 +3138,9 @@ function confirmDeleteQuote(id) {
 }
 
 // ─── PROPOSAL GENERATION ──────────────────────────────────────────────────────
-let _docxModule = null;
-
-async function loadDocxLib() {
-  if (_docxModule) return _docxModule;
-  _docxModule = await import('https://esm.sh/docx@8');
-  return _docxModule;
-}
-
-async function generateProposal(id) {
+function generateProposal(id) {
   const quote = _quotes.find(q => q.id === id);
   if (!quote) return;
-  showToast('Building proposal…');
-  let docxLib;
-  try { docxLib = await loadDocxLib(); }
-  catch(e) { showToast('Could not load document library — check connection', 'error'); return; }
-
-  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-    AlignmentType, BorderStyle, WidthType, ShadingType, PageNumber, Footer } = docxLib;
 
   const job = _jobs.find(j => j.id === quote.jobId);
   const lineItems = quote.lineItems || [];
@@ -3165,243 +3150,111 @@ async function generateProposal(id) {
   const laborSubtotal = labor.reduce((s, i) => s + (i.total || i.amount || 0), 0);
   const grandTotal = materialsSubtotal + laborSubtotal;
 
-  const toRow = item => [
-    item.description,
-    String(item.qty || '1'),
-    item.unit || 'EA',
-    '$' + parseFloat(item.unitPrice || 0).toFixed(2),
-    '$' + parseFloat(item.total || item.amount || 0).toFixed(2)
-  ];
-
   const proposalDate = quote.date
     ? new Date(quote.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   const proposalNum = 'Q-' + String(quote.id).slice(-6);
+  const fm = n => '$' + parseFloat(n || 0).toFixed(2);
 
-  const C = {
-    accent: '1A7FAA', headerBg: '1C1C1C', headerText: '1A7FAA',
-    sectionHead: '155F8A', rowAlt: 'E0EEF5', white: 'FFFFFF',
-    subtotalBg: 'F9F9F9', totalBg: '1A7FAA', notesBg: 'F9F9F9',
-  };
-  const W = [4200, 900, 1000, 1400, 1860];
-  const COL_HEADERS = ['Description', 'Qty', 'Unit', 'Unit Price', 'Total'];
-  const cellBorder = { style: BorderStyle.SINGLE, size: 4, color: 'CCCCCC' };
-  const noBorder   = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
-  const allBorders = { top: cellBorder, bottom: cellBorder, left: cellBorder, right: cellBorder };
-  const noBorders  = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder };
+  const lineRow = (item, shade) => `
+    <tr style="background:${shade ? '#E0EEF5' : '#fff'}">
+      <td style="padding:6px 8px;border:1px solid #ccc;font-size:12px">${item.description}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;text-align:center;font-size:12px">${item.qty || 1}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;text-align:center;font-size:12px">${item.unit || 'EA'}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;text-align:right;font-size:12px">${fm(item.unitPrice)}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;text-align:right;font-size:12px">${fm(item.total || item.amount)}</td>
+    </tr>`;
 
-  const spacer = (pt = 6) => new Paragraph({ children: [new TextRun('')], spacing: { before: pt * 20, after: 0 } });
+  const subtotalHtml = (label, value) => `
+    <tr style="background:#f9f9f9">
+      <td colspan="4" style="padding:6px 8px;border:1px solid #ccc;text-align:right;font-weight:700;font-size:12px">${label}</td>
+      <td style="padding:6px 8px;border:1px solid #ccc;text-align:right;font-weight:700;font-size:12px">${value}</td>
+    </tr>`;
 
-  const sectionHeader = text => new Paragraph({
-    children: [new TextRun({ text, bold: true, size: 26, color: C.sectionHead, font: 'Arial' })],
-    border: { bottom: { style: BorderStyle.SINGLE, size: 8, color: C.accent, space: 2 } },
-    spacing: { before: 280, after: 120 },
-  });
+  const totalHtml = (label, value) => `
+    <tr style="background:#1A7FAA">
+      <td colspan="4" style="padding:8px;border:1px solid #1A7FAA;text-align:right;font-weight:700;color:#fff;font-size:13px">${label}</td>
+      <td style="padding:8px;border:1px solid #1A7FAA;text-align:right;font-weight:700;color:#fff;font-size:13px">${value}</td>
+    </tr>`;
 
-  const tHeaderRow = () => new TableRow({
-    tableHeader: true,
-    children: COL_HEADERS.map((text, i) => new TableCell({
-      width: { size: W[i], type: WidthType.DXA },
-      borders: allBorders,
-      shading: { fill: C.headerBg, type: ShadingType.CLEAR },
-      margins: { top: 100, bottom: 100, left: 120, right: 120 },
-      children: [new Paragraph({
-        alignment: i > 0 ? AlignmentType.CENTER : AlignmentType.LEFT,
-        children: [new TextRun({ text, bold: true, color: C.headerText, size: 20, font: 'Arial' })]
-      })]
-    }))
-  });
-
-  const tRow = (cols, shade = false) => new TableRow({
-    children: cols.map((text, i) => new TableCell({
-      width: { size: W[i], type: WidthType.DXA },
-      borders: allBorders,
-      shading: { fill: shade ? C.rowAlt : C.white, type: ShadingType.CLEAR },
-      margins: { top: 80, bottom: 80, left: 120, right: 120 },
-      children: [new Paragraph({
-        alignment: i > 0 ? AlignmentType.CENTER : AlignmentType.LEFT,
-        children: [new TextRun({ text: String(text), size: 20, font: 'Arial', color: '1C1C1C' })]
-      })]
-    }))
-  });
-
-  const subtotalRow = (label, value) => new TableRow({
-    children: [
-      new TableCell({
-        columnSpan: 4,
-        width: { size: W[0]+W[1]+W[2]+W[3], type: WidthType.DXA },
-        borders: allBorders,
-        shading: { fill: C.subtotalBg, type: ShadingType.CLEAR },
-        margins: { top: 80, bottom: 80, left: 120, right: 120 },
-        children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: label, bold: true, size: 20, font: 'Arial' })] })]
-      }),
-      new TableCell({
-        width: { size: W[4], type: WidthType.DXA },
-        borders: allBorders,
-        shading: { fill: C.subtotalBg, type: ShadingType.CLEAR },
-        margins: { top: 80, bottom: 80, left: 120, right: 120 },
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: value, bold: true, size: 20, font: 'Arial' })] })]
-      })
-    ]
-  });
-
-  const totalRow = (label, value) => new TableRow({
-    children: [
-      new TableCell({
-        columnSpan: 4,
-        width: { size: W[0]+W[1]+W[2]+W[3], type: WidthType.DXA },
-        borders: allBorders,
-        shading: { fill: C.totalBg, type: ShadingType.CLEAR },
-        margins: { top: 100, bottom: 100, left: 120, right: 120 },
-        children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: label, bold: true, size: 22, font: 'Arial', color: C.white })] })]
-      }),
-      new TableCell({
-        width: { size: W[4], type: WidthType.DXA },
-        borders: allBorders,
-        shading: { fill: C.totalBg, type: ShadingType.CLEAR },
-        margins: { top: 100, bottom: 100, left: 120, right: 120 },
-        children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: value, bold: true, size: 22, font: 'Arial', color: C.white })] })]
-      })
-    ]
-  });
-
-  const infoCell = (text, bold = false) => new TableCell({
-    borders: noBorders,
-    width: { size: 1600, type: WidthType.DXA },
-    children: [new Paragraph({ children: [new TextRun({ text, bold, size: 20, font: 'Arial' })] })]
-  });
-
-  const valueCell = text => new TableCell({
-    borders: { bottom: { style: BorderStyle.SINGLE, size: 4, color: 'AAAAAA' }, top: noBorder, left: noBorder, right: noBorder },
-    width: { size: 3080, type: WidthType.DXA },
-    children: [new Paragraph({ children: [new TextRun({ text, size: 20, font: 'Arial' })] })]
-  });
-
-  // Build piece rows — separate materials from labor with their own subtotal rows
-  const pieceRows = [tHeaderRow()];
+  let tableBody = '';
   if (materials.length > 0) {
-    materials.forEach((item, i) => pieceRows.push(tRow(toRow(item), i % 2 === 1)));
-    pieceRows.push(subtotalRow('Materials Subtotal', '$' + materialsSubtotal.toFixed(2)));
+    tableBody += materials.map((item, i) => lineRow(item, i % 2 === 1)).join('');
+    tableBody += subtotalHtml('Materials Subtotal', fm(materialsSubtotal));
   }
   if (labor.length > 0) {
-    labor.forEach((item, i) => pieceRows.push(tRow(toRow(item), i % 2 === 1)));
-    pieceRows.push(subtotalRow('Labor Subtotal', '$' + laborSubtotal.toFixed(2)));
+    tableBody += labor.map((item, i) => lineRow(item, i % 2 === 1)).join('');
+    tableBody += subtotalHtml('Labor Subtotal', fm(laborSubtotal));
   }
-  if (lineItems.length === 0) {
-    pieceRows.push(tRow(['No line items', '', '', '', '$0.00'], false));
-  }
-  pieceRows.push(totalRow('PIECE 1 TOTAL', '$' + grandTotal.toFixed(2)));
+  if (!lineItems.length) tableBody += `<tr><td colspan="5" style="padding:8px;text-align:center;color:#888;font-size:12px">No line items</td></tr>`;
+  tableBody += totalHtml('PIECE 1 TOTAL', fm(grandTotal));
 
   const scopeNotes = quote.notes
     ? quote.notes.split('\n').map(n => n.trim()).filter(Boolean)
     : ['See line items above for complete scope of work.'];
 
-  const docChildren = [
-    // Header
-    new Paragraph({
-      alignment: AlignmentType.CENTER, spacing: { before: 0, after: 60 },
-      children: [new TextRun({ text: 'ACTIVATE SOLUTIONS', bold: true, size: 52, color: C.accent, font: 'Arial' })]
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER, spacing: { before: 0, after: 40 },
-      children: [new TextRun({ text: 'Repair & Restoration Proposal', size: 26, color: C.sectionHead, font: 'Arial' })]
-    }),
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      border: { bottom: { style: BorderStyle.SINGLE, size: 10, color: C.accent, space: 4 } },
-      spacing: { before: 0, after: 200 },
-      children: [new TextRun({ text: '210-296-9294', size: 22, color: '555555', font: 'Arial' })]
-    }),
-    spacer(4),
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Proposal — ${quote.customer || quote.title || 'Activate Solutions'}</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #1c1c1c; margin: 0; padding: 0; }
+  .page { max-width: 720px; margin: 0 auto; padding: 36px 32px; }
+  table { width: 100%; border-collapse: collapse; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .page { padding: 0; } }
+</style></head><body>
+<div class="page">
+  <div style="text-align:center;margin-bottom:4px;font-size:28px;font-weight:700;color:#1A7FAA">ACTIVATE SOLUTIONS</div>
+  <div style="text-align:center;font-size:15px;color:#155F8A;margin-bottom:4px">Repair & Restoration Proposal</div>
+  <div style="text-align:center;font-size:13px;color:#555;border-bottom:3px solid #1A7FAA;padding-bottom:12px;margin-bottom:20px">210-296-9294</div>
 
-    // Project info
-    new Table({
-      width: { size: 9360, type: WidthType.DXA },
-      columnWidths: [1600, 3080, 1600, 3080],
-      borders: { insideH: { style: BorderStyle.NONE }, insideV: { style: BorderStyle.NONE },
-                 top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
-      rows: [
-        new TableRow({ children: [infoCell('Date:', true), valueCell(proposalDate), infoCell('Proposal #:', true), valueCell(proposalNum)] }),
-        new TableRow({ children: [infoCell('Client:', true), valueCell(quote.customer || ''), infoCell('Property:', true), valueCell(job ? (job.location || job.name) : '')] }),
-      ]
-    }),
+  <table style="margin-bottom:24px">
+    <tr>
+      <td style="font-weight:700;white-space:nowrap;padding:3px 12px 3px 0;width:90px">Date:</td>
+      <td style="border-bottom:1px solid #aaa;padding:3px 16px 3px 0">${proposalDate}</td>
+      <td style="font-weight:700;white-space:nowrap;padding:3px 12px 3px 0;width:100px">Proposal #:</td>
+      <td style="border-bottom:1px solid #aaa;padding:3px 0">${proposalNum}</td>
+    </tr>
+    <tr>
+      <td style="font-weight:700;padding:3px 12px 3px 0">Client:</td>
+      <td style="border-bottom:1px solid #aaa;padding:3px 16px 3px 0">${quote.customer || ''}</td>
+      <td style="font-weight:700;padding:3px 12px 3px 0">Property:</td>
+      <td style="border-bottom:1px solid #aaa;padding:3px 0">${job ? (job.location || job.name) : ''}</td>
+    </tr>
+  </table>
 
-    // Piece
-    spacer(10),
-    sectionHeader('PIECE 1 — ' + (quote.title || 'Scope of Work')),
-    new Paragraph({
-      spacing: { before: 0, after: 80 },
-      children: [new TextRun({ text: (quote.notes ? quote.notes.split('\n')[0] : 'Work as detailed in line items below.'), size: 20, font: 'Arial', color: '444444' })]
-    }),
-    new Table({ width: { size: 9360, type: WidthType.DXA }, columnWidths: W, rows: pieceRows }),
+  <div style="font-size:15px;font-weight:700;color:#155F8A;border-bottom:3px solid #1A7FAA;padding-bottom:4px;margin:24px 0 8px">PIECE 1 — ${quote.title || 'Scope of Work'}</div>
+  <div style="font-size:12px;color:#444;margin-bottom:10px">${quote.notes ? quote.notes.split('\n')[0] : 'Work as detailed in line items below.'}</div>
 
-    spacer(14),
+  <table style="margin-bottom:16px">
+    <thead><tr style="background:#1c1c1c">
+      <th style="padding:7px 8px;border:1px solid #ccc;text-align:left;color:#1A7FAA;font-size:12px;width:45%">Description</th>
+      <th style="padding:7px 8px;border:1px solid #ccc;text-align:center;color:#1A7FAA;font-size:12px;width:8%">Qty</th>
+      <th style="padding:7px 8px;border:1px solid #ccc;text-align:center;color:#1A7FAA;font-size:12px;width:9%">Unit</th>
+      <th style="padding:7px 8px;border:1px solid #ccc;text-align:right;color:#1A7FAA;font-size:12px;width:14%">Unit Price</th>
+      <th style="padding:7px 8px;border:1px solid #ccc;text-align:right;color:#1A7FAA;font-size:12px;width:14%">Total</th>
+    </tr></thead>
+    <tbody>${tableBody}</tbody>
+  </table>
 
-    // Grand total
-    new Table({
-      width: { size: 9360, type: WidthType.DXA }, columnWidths: W,
-      rows: [totalRow('TOTAL PROJECT ESTIMATE', '$' + grandTotal.toFixed(2))]
-    }),
+  <table style="margin-bottom:24px">${totalHtml('TOTAL PROJECT ESTIMATE', fm(grandTotal))}</table>
 
-    spacer(14),
+  <div style="border:1px solid #ccc;background:#f9f9f9;padding:14px 18px;font-size:12px">
+    <div style="font-weight:700;color:#155F8A;margin-bottom:8px">Scope Notes</div>
+    ${scopeNotes.map((n, i) => `<p style="margin:0 0 6px">${i + 1}.  ${n}</p>`).join('')}
+    <div style="font-weight:700;color:#155F8A;margin:14px 0 6px">Terms</div>
+    <p style="margin:0 0 6px">50% deposit required to schedule. Balance due upon completion. Quote valid for 30 days. Activate Solutions is not responsible for damage concealed behind existing materials until scope is confirmed on site.</p>
+    <p style="margin:18px 0 0">Accepted by: ________________________________&nbsp;&nbsp;&nbsp;Date: _____________</p>
+  </div>
 
-    // Notes & Terms
-    sectionHeader('Notes & Terms'),
-    new Table({
-      width: { size: 9360, type: WidthType.DXA }, columnWidths: [9360],
-      rows: [new TableRow({ children: [new TableCell({
-        borders: allBorders,
-        shading: { fill: C.notesBg, type: ShadingType.CLEAR },
-        margins: { top: 120, bottom: 120, left: 180, right: 180 },
-        width: { size: 9360, type: WidthType.DXA },
-        children: [
-          new Paragraph({ spacing: { before: 0, after: 80 }, children: [new TextRun({ text: 'Scope Notes', bold: true, size: 20, color: C.sectionHead, font: 'Arial' })] }),
-          ...scopeNotes.map((note, i) => new Paragraph({ spacing: { before: 0, after: 60 }, children: [new TextRun({ text: `${i + 1}.  ${note}`, size: 20, font: 'Arial' })] })),
-          new Paragraph({ spacing: { before: 60, after: 60 }, children: [new TextRun({ text: 'Terms', bold: true, size: 20, color: C.sectionHead, font: 'Arial' })] }),
-          new Paragraph({ spacing: { before: 0, after: 60 }, children: [new TextRun({ text: '50% deposit required to schedule. Balance due upon completion. Quote valid for 30 days. Activate Solutions is not responsible for damage concealed behind existing materials until scope is confirmed on site.', size: 20, font: 'Arial' })] }),
-          new Paragraph({ spacing: { before: 80, after: 0 }, children: [new TextRun({ text: 'Accepted by: ________________________________   Date: _____________', size: 20, font: 'Arial' })] }),
-        ]
-      })]})],
-    }),
-    spacer(8),
-  ];
+  <div style="margin-top:20px;text-align:center;font-size:11px;color:#888;border-top:2px solid #1A7FAA;padding-top:10px">
+    Activate Solutions • 210-296-9294 • activateyoursolution.com
+  </div>
+</div>
+<script>window.onload = function(){ window.print(); }<\/script>
+</body></html>`;
 
-  const doc = new Document({
-    styles: { default: { document: { run: { font: 'Arial', size: 22 } } } },
-    sections: [{
-      properties: { page: { size: { width: 12240, height: 15840 }, margin: { top: 1080, right: 1080, bottom: 1080, left: 1080 } } },
-      footers: {
-        default: new Footer({ children: [new Paragraph({
-          border: { top: { style: BorderStyle.SINGLE, size: 8, color: C.accent, space: 2 } },
-          alignment: AlignmentType.CENTER, spacing: { before: 80 },
-          children: [
-            new TextRun({ text: 'Activate Solutions  |  210-296-9294  |  Page ', size: 18, color: '888888', font: 'Arial' }),
-            new TextRun({ children: [PageNumber.CURRENT], size: 18, color: '888888', font: 'Arial' }),
-            new TextRun({ text: ' of ', size: 18, color: '888888', font: 'Arial' }),
-            new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 18, color: '888888', font: 'Arial' }),
-          ]
-        })] })
-      },
-      children: docChildren,
-    }]
-  });
-
-  try {
-    const blob = await Packer.toBlob(doc);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const safe = (quote.customer || 'Proposal').replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '_');
-    a.download = 'Activate_Solutions_Proposal_' + safe + '.docx';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast('Proposal downloaded', 'success');
-  } catch(e) {
-    showToast('Error generating proposal', 'error');
-    console.error(e);
-  }
+  const w = window.open('', '_blank', 'width=800,height=950');
+  if (w) { w.document.write(html); w.document.close(); }
+  else showToast('Allow pop-ups to generate proposal', 'error');
 }
 
 async function removeLineItem(quoteId, itemId) {
