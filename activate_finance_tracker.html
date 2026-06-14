@@ -1012,7 +1012,7 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
         <input type="checkbox" id="qn-tax">
         <span>
           <span class="tax-toggle-title">Add San Antonio sales tax</span>
-          <span class="tax-toggle-sub">Applies 8.25% to the quote total</span>
+          <span class="tax-toggle-sub">Applies <span class="js-tax-label">8.25%</span> to the quote total</span>
         </span>
       </label>
     </div>
@@ -1224,7 +1224,7 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
       <input type="checkbox" id="eqi-tax">
       <span>
         <span class="tax-toggle-title">Add San Antonio sales tax</span>
-        <span class="tax-toggle-sub">Applies 8.25% to the quote total</span>
+        <span class="tax-toggle-sub">Applies <span class="js-tax-label">8.25%</span> to the quote total</span>
       </span>
     </label>
     <div class="modal-actions" style="margin-top:14px">
@@ -1280,6 +1280,7 @@ const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxs1VO_Ai8H7d1DulAOZ
 
 const IRS_RATE = 0.70;
 const SA_TAX_RATE = 0.0825;     // San Antonio, TX combined sales tax rate (8.25%)
+const SA_TAX_LABEL = (SA_TAX_RATE * 100).toFixed(3).replace(/\.?0+$/, '') + '%';  // "8.25%"
 const DEFAULT_CATS = ['Tools & Equipment','Fuel/Mileage','Materials','Insurance','Platform Fees (Angi)','Advertising','Subcontractors','Other'];
 const PAYMENT_METHODS = ['Cash','Check','Venmo','Cash App'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -2756,17 +2757,17 @@ async function loadQuotesData() {
 function quoteTotals(quote) {
   const subtotal = (quote.lineItems || []).reduce((s, i) => s + (i.total || 0), 0);
   const taxRate = quote.applyTax ? SA_TAX_RATE : 0;
-  const tax = subtotal * taxRate;
+  const tax = Math.round(subtotal * taxRate * 100) / 100;  // round to cents
   const total = subtotal + tax;
   const paid = (quote.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
-  return { subtotal, taxRate, tax, total, paid, balance: total - paid };
+  return { subtotal, tax, total, paid, balance: total - paid };
 }
 
 function recalcQuoteStatus(quote) {
-  const { total } = quoteTotals(quote);
+  const { total, paid } = quoteTotals(quote);
   quote.totalAmount = total;
-  quote.amountPaid = (quote.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
-  if (total > 0 && quote.amountPaid >= total && quote.status !== 'draft') quote.status = 'paid';
+  quote.amountPaid = paid;
+  if (total > 0 && paid >= total && quote.status !== 'draft') quote.status = 'paid';
 }
 
 async function saveQuoteOptimistic(quote) {
@@ -2962,7 +2963,7 @@ function renderQuoteDetail() {
   html += `<div class="detail-section" style="margin-top:12px">
     <div class="totals-card">
       ${quote.applyTax ? `<div class="totals-row"><span>Subtotal</span><span>${$f(subtotal)}</span></div>
-      <div class="totals-row"><span>Sales tax (8.25%)</span><span>${$f(tax)}</span></div>` : ''}
+      <div class="totals-row"><span>Sales tax (${SA_TAX_LABEL})</span><span>${$f(tax)}</span></div>` : ''}
       <div class="totals-row grand"><span>Total</span><span>${$f(total)}</span></div>
       ${paid > 0 ? `<div class="totals-row"><span>Paid</span><span style="color:var(--success)">${$f(paid)}</span></div>` : ''}
       ${balance > 0.001 ? `<div class="totals-row balance"><span>Balance due</span><span>${$f(balance)}</span></div>` : ''}
@@ -3142,7 +3143,7 @@ function generateReceipt(id) {
     ${laborTotal > 0 ? `<div class="totals-row"><span>Labor</span><span>$${laborTotal.toFixed(2)}</span></div>` : ''}
     ${materialsTotal > 0 ? `<div class="totals-row"><span>Materials</span><span>$${materialsTotal.toFixed(2)}</span></div>` : ''}
     ${quote.applyTax ? `<div class="totals-row"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>
-    <div class="totals-row"><span>Sales Tax (8.25%)</span><span>$${tax.toFixed(2)}</span></div>` : ''}
+    <div class="totals-row"><span>Sales Tax (${SA_TAX_LABEL})</span><span>$${tax.toFixed(2)}</span></div>` : ''}
     <div class="totals-grand"><span>Total</span><span>$${total.toFixed(2)}</span></div>
     ${paid > 0 ? `<div class="totals-row" style="color:#1D9E75"><span>Paid</span><span>$${paid.toFixed(2)}</span></div>` : ''}
     ${(total - paid) > 0.01 ? `<div class="totals-row" style="font-weight:600;color:#D84040"><span>Balance Due</span><span>$${(total-paid).toFixed(2)}</span></div>` : ''}
@@ -3270,7 +3271,7 @@ function generateProposal(id) {
 
   <table style="margin-bottom:24px">${
     quote.applyTax
-      ? subtotalHtml('Subtotal', fm(grandTotal)) + subtotalHtml('Sales Tax (8.25%)', fm(taxAmount)) + totalHtml('TOTAL PROJECT ESTIMATE', fm(estimateWithTax))
+      ? subtotalHtml('Subtotal', fm(grandTotal)) + subtotalHtml('Sales Tax (' + SA_TAX_LABEL + ')', fm(taxAmount)) + totalHtml('TOTAL PROJECT ESTIMATE', fm(estimateWithTax))
       : totalHtml('TOTAL PROJECT ESTIMATE', fm(grandTotal))
   }</table>
 
@@ -3656,6 +3657,9 @@ async function requestNotificationPermission() {
   if (!('Notification' in window) || Notification.permission !== 'default') return;
   await Notification.requestPermission();
 }
+
+// Keep the displayed tax percentage in sync with SA_TAX_RATE.
+document.querySelectorAll('.js-tax-label').forEach(el => { el.textContent = SA_TAX_LABEL; });
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/as-finance/sw.js').catch(() => {});
