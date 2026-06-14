@@ -289,6 +289,11 @@ html, body {
 
 /* QUOTE FORM */
 .quote-form { display: flex; flex-direction: column; gap: 14px; padding: 16px; }
+.tax-toggle { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; }
+.tax-toggle input { width: 20px; height: 20px; accent-color: var(--brand); flex-shrink: 0; }
+.tax-toggle span { display: flex; flex-direction: column; gap: 2px; }
+.tax-toggle-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.tax-toggle-sub { font-size: 12px; color: var(--text2); }
 
 /* PIN SCREEN */
 .pin-screen {
@@ -1003,6 +1008,13 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
         <label class="field-label">Notes (optional)</label>
         <textarea id="qn-notes" placeholder="Any special instructions…" style="height:72px;resize:none"></textarea>
       </div>
+      <label class="tax-toggle" for="qn-tax">
+        <input type="checkbox" id="qn-tax">
+        <span>
+          <span class="tax-toggle-title">Add San Antonio sales tax</span>
+          <span class="tax-toggle-sub">Applies 8.25% to the quote total</span>
+        </span>
+      </label>
     </div>
   </div>
   <div class="action-bar">
@@ -1208,6 +1220,13 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
     </select>
     <label class="field-label" style="margin-top:12px">Notes (optional)</label>
     <textarea id="eqi-notes" style="height:64px;resize:none"></textarea>
+    <label class="tax-toggle" for="eqi-tax" style="margin-top:14px">
+      <input type="checkbox" id="eqi-tax">
+      <span>
+        <span class="tax-toggle-title">Add San Antonio sales tax</span>
+        <span class="tax-toggle-sub">Applies 8.25% to the quote total</span>
+      </span>
+    </label>
     <div class="modal-actions" style="margin-top:14px">
       <button class="btn-secondary" onclick="closeModal('modal-edit-quote-info')">Cancel</button>
       <button class="btn-primary" onclick="saveQuoteInfo()">Save</button>
@@ -1260,6 +1279,7 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
 const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxs1VO_Ai8H7d1DulAOZqHQfGZT3fOidy1AKX8BGsSBQpGdLYuNwDfFyZnnnTy5aJrP/exec';
 
 const IRS_RATE = 0.70;
+const SA_TAX_RATE = 0.0825;     // San Antonio, TX combined sales tax rate (8.25%)
 const DEFAULT_CATS = ['Tools & Equipment','Fuel/Mileage','Materials','Insurance','Platform Fees (Angi)','Advertising','Subcontractors','Other'];
 const PAYMENT_METHODS = ['Cash','Check','Venmo','Cash App'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -2731,8 +2751,19 @@ async function loadQuotesData() {
   }
 }
 
+// Compute a quote's subtotal, tax, and grand total. Tax applies only when the
+// quote is flagged with applyTax (San Antonio sales tax checkbox).
+function quoteTotals(quote) {
+  const subtotal = (quote.lineItems || []).reduce((s, i) => s + (i.total || 0), 0);
+  const taxRate = quote.applyTax ? SA_TAX_RATE : 0;
+  const tax = subtotal * taxRate;
+  const total = subtotal + tax;
+  const paid = (quote.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+  return { subtotal, taxRate, tax, total, paid, balance: total - paid };
+}
+
 function recalcQuoteStatus(quote) {
-  const total = (quote.lineItems || []).reduce((s, i) => s + (i.total || 0), 0);
+  const { total } = quoteTotals(quote);
   quote.totalAmount = total;
   quote.amountPaid = (quote.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
   if (total > 0 && quote.amountPaid >= total && quote.status !== 'draft') quote.status = 'paid';
@@ -2815,9 +2846,7 @@ async function refreshQuotesList() {
 }
 
 function quoteCardHTML(q) {
-  const total = (q.lineItems || []).reduce((s, i) => s + (i.total || 0), 0);
-  const paid = (q.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
-  const balance = total - paid;
+  const { total, balance } = quoteTotals(q);
   const dateStr = q.date ? new Date(q.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
   const balHtml = balance > 0.001 && q.status !== 'draft' ? `<div class="quote-bal">Due: ${$f(balance)}</div>` : '';
   return `<div class="quote-item" onclick="openQuoteDetail('${q.id}')">
@@ -2849,6 +2878,7 @@ function initNewQuoteForm() {
   document.getElementById('qn-date').value = todayStr();
   document.getElementById('qn-title').value = '';
   document.getElementById('qn-notes').value = '';
+  document.getElementById('qn-tax').checked = false;
 }
 
 function updateQuoteNewJobs() {
@@ -2864,12 +2894,13 @@ async function createNewQuote() {
   const jobId = document.getElementById('qn-job').value;
   const date = document.getElementById('qn-date').value;
   const notes = document.getElementById('qn-notes').value.trim();
+  const applyTax = document.getElementById('qn-tax').checked;
   if (!customer) { alert('Please select a customer.'); return; }
   const quote = {
     id: Date.now().toString(), status: 'draft',
     customer, jobId, title: title || customer + ' Quote',
     date: date ? localDateToISO(date) : new Date().toISOString(),
-    notes, completedDate: '', totalAmount: 0, amountPaid: 0,
+    notes, applyTax, completedDate: '', totalAmount: 0, amountPaid: 0,
     lineItems: [], payments: []
   };
   _quotes.unshift(quote);
@@ -2890,9 +2921,7 @@ function renderQuoteDetail() {
   if (!quote) return;
   const isDraft = quote.status === 'draft';
   const isEditable = isDraft || quote.status === 'finalized' || quote.status === 'completed' || quote.status === 'paid';
-  const total = (quote.lineItems || []).reduce((s, i) => s + (i.total || 0), 0);
-  const paid = (quote.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
-  const balance = total - paid;
+  const { subtotal, tax, total, paid, balance } = quoteTotals(quote);
   document.getElementById('qd-title').textContent = quote.title || 'Quote';
   document.getElementById('qd-edit-btn').style.display = isEditable ? 'flex' : 'none';
 
@@ -2932,6 +2961,8 @@ function renderQuoteDetail() {
   // Totals
   html += `<div class="detail-section" style="margin-top:12px">
     <div class="totals-card">
+      ${quote.applyTax ? `<div class="totals-row"><span>Subtotal</span><span>${$f(subtotal)}</span></div>
+      <div class="totals-row"><span>Sales tax (8.25%)</span><span>${$f(tax)}</span></div>` : ''}
       <div class="totals-row grand"><span>Total</span><span>${$f(total)}</span></div>
       ${paid > 0 ? `<div class="totals-row"><span>Paid</span><span style="color:var(--success)">${$f(paid)}</span></div>` : ''}
       ${balance > 0.001 ? `<div class="totals-row balance"><span>Balance due</span><span>${$f(balance)}</span></div>` : ''}
@@ -3037,8 +3068,7 @@ function generateReceipt(id) {
   const quote = _quotes.find(q => q.id === id);
   if (!quote) return;
   const job = _jobs.find(j => j.id === quote.jobId);
-  const total = (quote.lineItems || []).reduce((s, i) => s + (i.total || 0), 0);
-  const paid = (quote.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+  const { subtotal, tax, total, paid } = quoteTotals(quote);
   const laborTotal = (quote.lineItems || []).filter(i => i.type === 'labor' || !i.type).reduce((s, i) => s + (i.total || 0), 0);
   const materialsTotal = (quote.lineItems || []).filter(i => i.type === 'material').reduce((s, i) => s + (i.total || 0), 0);
   const lastPayment = (quote.payments || []).slice(-1)[0];
@@ -3111,6 +3141,8 @@ function generateReceipt(id) {
   <div class="totals">
     ${laborTotal > 0 ? `<div class="totals-row"><span>Labor</span><span>$${laborTotal.toFixed(2)}</span></div>` : ''}
     ${materialsTotal > 0 ? `<div class="totals-row"><span>Materials</span><span>$${materialsTotal.toFixed(2)}</span></div>` : ''}
+    ${quote.applyTax ? `<div class="totals-row"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>
+    <div class="totals-row"><span>Sales Tax (8.25%)</span><span>$${tax.toFixed(2)}</span></div>` : ''}
     <div class="totals-grand"><span>Total</span><span>$${total.toFixed(2)}</span></div>
     ${paid > 0 ? `<div class="totals-row" style="color:#1D9E75"><span>Paid</span><span>$${paid.toFixed(2)}</span></div>` : ''}
     ${(total - paid) > 0.01 ? `<div class="totals-row" style="font-weight:600;color:#D84040"><span>Balance Due</span><span>$${(total-paid).toFixed(2)}</span></div>` : ''}
@@ -3149,6 +3181,7 @@ function generateProposal(id) {
   const materialsSubtotal = materials.reduce((s, i) => s + (i.total || i.amount || 0), 0);
   const laborSubtotal = labor.reduce((s, i) => s + (i.total || i.amount || 0), 0);
   const grandTotal = materialsSubtotal + laborSubtotal;
+  const { tax: taxAmount, total: estimateWithTax } = quoteTotals(quote);
 
   const proposalDate = quote.date
     ? new Date(quote.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -3235,7 +3268,11 @@ function generateProposal(id) {
     <tbody>${tableBody}</tbody>
   </table>
 
-  <table style="margin-bottom:24px">${totalHtml('TOTAL PROJECT ESTIMATE', fm(grandTotal))}</table>
+  <table style="margin-bottom:24px">${
+    quote.applyTax
+      ? subtotalHtml('Subtotal', fm(grandTotal)) + subtotalHtml('Sales Tax (8.25%)', fm(taxAmount)) + totalHtml('TOTAL PROJECT ESTIMATE', fm(estimateWithTax))
+      : totalHtml('TOTAL PROJECT ESTIMATE', fm(grandTotal))
+  }</table>
 
   <div style="border:1px solid #ccc;background:#f9f9f9;padding:14px 18px;font-size:12px">
     <div style="font-weight:700;color:#155F8A;margin-bottom:8px">Scope Notes</div>
@@ -3356,9 +3393,7 @@ function openRecordPaymentModal(quoteId) {
   _currentQuoteId = quoteId;
   _selectedPayMethod = null;
   const quote = _quotes.find(q => q.id === quoteId);
-  const total = quote ? (quote.lineItems || []).reduce((s, i) => s + (i.total || 0), 0) : 0;
-  const paid = quote ? (quote.payments || []).reduce((s, p) => s + (p.amount || 0), 0) : 0;
-  const balance = Math.max(0, total - paid);
+  const balance = quote ? Math.max(0, quoteTotals(quote).balance) : 0;
   document.getElementById('pay-amount').value = balance > 0 ? balance.toFixed(2) : '';
   document.getElementById('pay-date').value = todayStr();
   document.querySelectorAll('#pay-method-choices .choice-btn').forEach(b => b.classList.remove('sel'));
@@ -3388,6 +3423,7 @@ function openEditQuoteInfo() {
   if (!quote) return;
   document.getElementById('eqi-title').value = quote.title || '';
   document.getElementById('eqi-notes').value = quote.notes || '';
+  document.getElementById('eqi-tax').checked = !!quote.applyTax;
   const custEl = document.getElementById('eqi-customer');
   custEl.innerHTML = '<option value="">Select customer…</option>' +
     _customers.filter(c => c !== 'No customer').map(c => `<option value="${c}" ${c === quote.customer ? 'selected' : ''}>${c}</option>`).join('');
@@ -3412,6 +3448,7 @@ async function saveQuoteInfo() {
   quote.customer = customer;
   quote.jobId = document.getElementById('eqi-job').value;
   quote.notes = document.getElementById('eqi-notes').value.trim();
+  quote.applyTax = document.getElementById('eqi-tax').checked;
   await saveQuoteOptimistic(quote);
   closeModal('modal-edit-quote-info');
   renderQuoteDetail();

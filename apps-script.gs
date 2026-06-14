@@ -16,9 +16,9 @@ var SHEET_PRICE_GUIDE = 'PriceGuide';
 var QCOL = {
   id: 1, status: 2, customer: 3, jobId: 4, title: 5,
   date: 6, notes: 7, completedDate: 8, totalAmount: 9,
-  amountPaid: 10, lineItemsJSON: 11, paymentsJSON: 12
+  amountPaid: 10, lineItemsJSON: 11, paymentsJSON: 12, applyTax: 13
 };
-var QUOTES_COL_COUNT = 12;
+var QUOTES_COL_COUNT = 13;
 
 // PriceGuide tab column order (1-based)
 var PGCOL = { id: 1, name: 2, minPrice: 3, maxPrice: 4, unit: 5 };
@@ -119,7 +119,8 @@ function rowToQuote(row) {
     totalAmount:   parseFloat(row[8]) || 0,
     amountPaid:    parseFloat(row[9]) || 0,
     lineItems:     safeParseJSON(row[10], []),
-    payments:      safeParseJSON(row[11], [])
+    payments:      safeParseJSON(row[11], []),
+    applyTax:      row[12] === true || String(row[12]).toLowerCase() === 'true'
   };
 }
 
@@ -129,7 +130,8 @@ function quoteToRow(q) {
     q.date, q.notes || '', q.completedDate || '',
     q.totalAmount || 0, q.amountPaid || 0,
     JSON.stringify(q.lineItems || []),
-    JSON.stringify(q.payments || [])
+    JSON.stringify(q.payments || []),
+    q.applyTax ? true : false
   ];
 }
 
