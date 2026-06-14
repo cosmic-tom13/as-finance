@@ -2904,10 +2904,12 @@ async function createNewQuote() {
     notes, applyTax, completedDate: '', totalAmount: 0, amountPaid: 0,
     lineItems: [], payments: []
   };
-  _quotes.unshift(quote);
   _quotesLoaded = true;
-  await apiPost({ action: 'addQuote', quote }).catch(() => showToast('Sync failed', 'error'));
-  openQuoteDetail(quote.id);
+  await saveQuoteOptimistic(quote);  // unshifts, queues when offline, rolls back on error
+  // saveQuoteOptimistic rolls the quote back out of _quotes if an online sync
+  // fails; only open the detail if it's still present.
+  if (_quotes.some(q => q.id === quote.id)) openQuoteDetail(quote.id);
+  else showScreen('screen-quotes');
 }
 
 // ─── QUOTE DETAIL ─────────────────────────────────────────────────────────────
