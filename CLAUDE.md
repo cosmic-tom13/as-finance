@@ -270,7 +270,7 @@ Add to `<head>` for Add to Home Screen support:
 ## Questions Answered (Pre-build decisions)
 
 - **A. Data load on startup:** Load the **past 90 days** only on initial load. Older entries are fetched on demand via a "Load older entries" button in the History screen. This keeps startup fast regardless of how many total entries exist.
-- **B. Google account:** `tmcnish@activateyoursolution.com` — the Apps Script must be deployed from this account and the Sheet must live in this account's Google Drive.
+- **B. Google account:** `tmcnish@activatemysolution.com` — the Apps Script must be deployed from this account and the Sheet must live in this account's Google Drive.
 - **C. Offline behavior:** Queue locally, sync on reconnect (see Offline Queue section above).
 
 ---
@@ -312,3 +312,218 @@ activate-solutions-finance/
 ## Existing Code Reference
 
 The full working localStorage version is in `activate_finance_tracker.html` in this project. Use it as the UI source of truth — do not redesign anything, only migrate the data layer.
+
+---
+
+## ⚠️ IMPORTANT — Read This First
+
+The `activate_finance_tracker.html` file in this project directory is **an older snapshot** and does not reflect the current live app. The live app is more advanced and already includes a **Quotes screen, quote wizard, and quote data model** that Tommy uses actively. 
+
+**Before making any changes, Claude Code must read the actual current file and verify what already exists.** Do not assume the screen list or data model above is complete — it was written before the quotes feature was built.
+
+---
+
+## New Feature Requests — Gathered 2026-06-13
+
+The following three feature areas were scoped in a planning conversation. The quote data model was fully designed. Claude Code should read the live app first, confirm what exists, then implement only what's missing.
+
+---
+
+### Feature 1 — Edit finalized quotes (request #1)
+
+Tommy wants the ability to edit a quote after it has been finalized/saved. This may already be partially implemented — **verify before building.**
+
+---
+
+### Feature 2 — GPS functionality (request #2)
+
+Two sub-features, both net-new as of the planning session:
+
+**2a. Auto mileage tracking**
+- Use `navigator.geolocation.watchPosition()` to track miles driven while the app is open
+- Accumulate a daily mileage total stored locally
+- When a quote is marked **Completed**, prompt: "You drove X miles today — apply to this job?"
+- If yes, auto-create a mileage entry linked to that job
+
+**2b. Geofence arrival notifications**
+- When Tommy arrives near a job location, send a push notification reminding him to log job and quote details
+- Requires: job `location` field geocoded to lat/lng (currently stored as plain text)
+- Requires: `Notification` API permission + Service Worker for background delivery
+- Requires: a geocoding API call (Google Maps Geocoding or similar) to convert address → coordinates
+- Geofence radius: TBD — reasonable default ~200 meters
+
+**Build order for GPS:** 2a before 2b. 2b depends on geocoding infrastructure that doesn't exist yet.
+
+---
+
+### Feature 3 — Generate receipts from completed jobs (request #3)
+
+When a job is marked Completed, allow Tommy to generate a work receipt pre-filled from the quote line items and send it to the customer.
+
+**Context:** A fillable PDF receipt template already exists (`Activate_Solutions_Receipt_Fillable.pdf`, built with ReportLab in Python). That is server-side — in-app receipt generation needs a JS approach.
+
+**Approach for in-app:** Use browser `window.print()` with a receipt-formatted print stylesheet that matches the existing PDF branding. No external dependencies.
+
+**Receipt contents (pre-filled from quote):**
+- Customer name, job location
+- Line items (description, qty, unit, unit price, amount)
+- Labor subtotal, materials subtotal
+- Tax (optional), discount (optional), total
+- Payment method (from Paid transition)
+- 30-day warranty statement (static, same text as existing PDF receipt)
+- Activate Solutions branding: phone 210-296-9294, brand color #1A7FAA
+
+**Trigger:** "Generate receipt" button on any quote with status `completed` or `paid`.
+
+---
+
+### Quote Data Model — Fully Locked
+
+This was designed from scratch in the planning session. **If the live app already has a quote model, compare carefully and reconcile — do not overwrite existing data.**
+
+```js
+{
+  // Identity
+  id: "1717000000000",           // Date.now() string, primary key
+  quoteNumber: "Q-2026-001",     // auto-incremented, year-scoped
+  version: 1,                    // increments on revision
+  parentId: null,                // null for originals; original id on revisions
+  status: "draft",               // see lifecycle below
+
+  // Linkage
+  customer: "Linda Prudhomme",   // matches customers[]
+  jobId: "1717000000001",        // FK → jobs[], or ""
+
+  // Dates
+  createdAt: "2026-05-15T14:30:00.000Z",
+  updatedAt: "2026-05-15T14:30:00.000Z",
+  completedAt: null,
+  paidAt: null,
+
+  // Line items
+  lineItems: [
+    {
+      id: "li_001",
+      description: "Labor — fence repair",
+      qty: 1,
+      unit: "job",              // job | hr | day | flat | sqft | lnft | ea
+      unitPrice: 225.00,
+      type: "labor",            // labor | material | other
+      amount: 225.00            // qty × unitPrice, computed
+    }
+  ],
+
+  // Totals (computed on save)
+  laborTotal: 225.00,
+  materialsTotal: 37.00,
+  subtotal: 262.00,
+  tax: 0,                       // optional, dollar amount
+  discount: 0,                  // optional, dollar amount
+  total: 262.00,                // subtotal + tax - discount
+
+  // Optionals
+  notes: "",
+  mileageApplied: 0,            // miles logged on completion
+  receiptGenerated: false,
+
+  // Payment (filled on Paid transition)
+  paymentMethod: "",
+  linkedIncomeId: ""            // id of auto-created income entry
+}
+```
+
+### Quote status lifecycle
+
+```
+draft → sent → approved → in_progress → completed → paid
+                                              ↓
+                                   triggers receipt + mileage prompt
+                                   triggers auto income entry creation
+
+At any point before paid:
+  → declined
+  → cancelled
+
+Terminal statuses (no further transitions):
+  paid, superseded
+
+Reopenable (creates fresh draft):
+  declined → draft
+  cancelled → draft
+```
+
+### Status transition rules
+
+| From | Allowed next |
+|------|-------------|
+| `draft` | sent, approved, in_progress, declined, cancelled |
+| `sent` | approved, declined, cancelled |
+| `approved` | in_progress, declined, cancelled |
+| `in_progress` | completed, cancelled |
+| `completed` | paid, cancelled |
+| `paid` | *(terminal)* |
+| `superseded` | *(terminal, read-only)* |
+| `declined` | draft (reopen) |
+| `cancelled` | draft (reopen) |
+
+### Status display colors
+
+| Status | Color |
+|--------|-------|
+| `draft` | Gray (`--text3`) |
+| `sent` | Warn yellow (`--warn`) |
+| `approved` | Brand light (`--brand`) |
+| `in_progress` | Brand (`--brand`) |
+| `completed` | Purple (`#7B4FB5`) |
+| `paid` | Success green (`--success`) |
+| `superseded` | Muted gray |
+| `declined` | Danger red (`--danger`) |
+| `cancelled` | Danger red (`--danger`) |
+
+### Revision rules
+
+- Allowed from: `draft`, `sent`, `approved`
+- Not allowed from: `in_progress`, `completed`, `paid`
+- On revision: old quote → `superseded` (locked), new quote → `draft` with `version + 1`, line items pre-filled, same `quoteNumber`, `parentId` = original id
+
+### Auto income entry on Paid transition
+
+Triggered on `completed → paid`:
+- Prompt for payment method (Cash / Check / Venmo / Cash App)
+- Auto-create income entry:
+  - `amount` = `quote.total`
+  - `customer` = `quote.customer`
+  - `jobId` = `quote.jobId`
+  - `payMethod` = captured at Paid transition
+  - `description` = `"Payment for " + quote.quoteNumber`
+  - `quoteId` = `quote.id` *(new field on income entries)*
+- Set `quote.linkedIncomeId` = new income entry id
+
+### Storage
+
+| Key | Contents |
+|-----|---------|
+| `as_quotes` | `quote[]` — all quotes including superseded |
+| `as_settings.quoteCounter` | integer, increments per new quote, resets yearly |
+
+### Income entry — new field
+
+All income entries get a new optional field:
+```js
+quoteId: ""   // populated when auto-created from a quote, else ""
+```
+
+### Unit options for line items
+
+`job` · `hr` · `day` · `flat` · `sqft` · `lnft` · `ea`
+
+---
+
+### Recommended build order for Claude Code
+
+1. **Read the live app** — identify what quote functionality already exists, reconcile with spec above
+2. **Feature 1** — add/fix edit capability for finalized quotes if not already present
+3. **Feature 3** — receipt generation (no permission dependencies, high value)
+4. **Feature 2a** — GPS auto mileage tracking
+5. **Feature 2b** — geofence arrival notifications (most complex, last)
+
