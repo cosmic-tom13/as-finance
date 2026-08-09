@@ -11,6 +11,12 @@ var SHEET_VENDORS    = 'Vendors';
 var SHEET_SETTINGS   = 'Settings';
 var SHEET_QUOTES     = 'Quotes';
 var SHEET_PRICE_GUIDE = 'PriceGuide';
+var SHEET_LEADS       = 'Leads';
+var SHEET_CHATS       = 'Chats';
+
+// Website lead/chat notifications — sent via free carrier email-to-SMS
+// gateway, no paid SMS service required. Change if Tommy switches carriers.
+var NOTIFY_SMS_EMAIL = '2102969294@tmomail.net';
 
 // Quotes tab column order (1-based)
 var QCOL = {
@@ -262,6 +268,8 @@ function doPost(e) {
       case 'updateQuote':    return handleUpdateQuote(params);
       case 'deleteQuote':    return handleDeleteQuote(params);
       case 'savePriceGuide': return handleSavePriceGuide(params);
+      case 'addLead':        return handleAddLead(params);
+      case 'addChat':        return handleAddChat(params);
       default:               return respondError('Unknown POST action: ' + action);
     }
   } catch (err) {
@@ -426,6 +434,68 @@ function handleSavePriceGuide(params) {
   return respond({ ok: true });
 }
 
+// ─── Website leads & chat (marketing site integration) ────────────────────────
+var LEADS_HEADERS = [
+  'id','createdAt','name','phone','email','address','service',
+  'description','preferredContact','source','status'
+];
+var CHATS_HEADERS = ['id','createdAt','name','phone','message','page'];
+
+function ensureSheetHeaders(sheetName, headers) {
+  var sheet = getSheet(sheetName);
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(headers);
+  }
+  return sheet;
+}
+
+// Sends a free SMS notification via the phone carrier's email-to-SMS
+// gateway (e.g. number@tmomail.net for T-Mobile). No paid SMS API needed.
+function notifyBySms(body) {
+  try {
+    MailApp.sendEmail(NOTIFY_SMS_EMAIL, '', body);
+  } catch (err) {
+    // Notification failures shouldn't block saving the lead/chat itself.
+    Logger.log('notifyBySms failed: ' + err.toString());
+  }
+}
+
+function handleAddLead(params) {
+  var lead = params.lead || params;
+  if (lead.action) delete lead.action;
+
+  var sheet = ensureSheetHeaders(SHEET_LEADS, LEADS_HEADERS);
+  sheet.appendRow([
+    lead.id, lead.createdAt, lead.name, lead.phone, lead.email || '',
+    lead.address, lead.service, lead.description,
+    lead.preferredContact || 'Text', lead.source || 'Website', 'New'
+  ]);
+
+  notifyBySms(
+    'New website lead: ' + lead.name + ' (' + lead.phone + '), ' +
+    lead.service + '. ' + lead.address
+  );
+
+  return respond({ ok: true, id: lead.id });
+}
+
+function handleAddChat(params) {
+  var chat = params.chat || params;
+  if (chat.action) delete chat.action;
+
+  var sheet = ensureSheetHeaders(SHEET_CHATS, CHATS_HEADERS);
+  sheet.appendRow([
+    chat.id, chat.createdAt, chat.name || '', chat.phone || '',
+    chat.message, chat.page || ''
+  ]);
+
+  var who = chat.name ? chat.name : 'Website visitor';
+  var callback = chat.phone ? ' (' + chat.phone + ')' : ' (no phone given)';
+  notifyBySms('New site chat from ' + who + callback + ': ' + chat.message);
+
+  return respond({ ok: true, id: chat.id });
+}
+
 // ─── Price guide read helper ──────────────────────────────────────────────────
 function getPriceGuideItems() {
   var sheet = getSheet(SHEET_PRICE_GUIDE);
@@ -525,6 +595,9 @@ function setupSpreadsheet() {
     ];
     pgSheet.getRange(1, 1, defaultGuide.length, PG_COL_COUNT).setValues(defaultGuide);
   }
+
+  ensureSheetHeaders(SHEET_LEADS, LEADS_HEADERS);
+  ensureSheetHeaders(SHEET_CHATS, CHATS_HEADERS);
 
   SpreadsheetApp.getUi().alert('Setup complete! All tabs created.');
 }
