@@ -2826,7 +2826,8 @@ async function recordPayment(quoteId, { amount, payMethod, date }) {
   await saveQuoteOptimistic(quote);
   if (!navigator.onLine) { queueOffline('addEntry', { entry }); }
   else {
-    apiPost({ action: 'addEntry', entry }).catch(() => showToast('Entry sync failed', 'error'));
+    try { await apiPost({ action: 'addEntry', entry }); }
+    catch(e) { showToast('Entry sync failed — reopen app to retry', 'error'); }
   }
   if (quote.status === 'paid' && wasCompleted) showToast('Quote fully paid!', 'success');
   else showToast('Payment recorded', 'success');
@@ -3012,7 +3013,8 @@ function renderQuoteDetail() {
       <button class="btn-primary" style="flex:1" onclick="openRecordPaymentModal('${quote.id}')"><i class="ti ti-cash"></i> Record Payment</button>`;
   } else if (quote.status === 'paid') {
     actions = `<button class="btn-secondary" onclick="generateReceipt('${quote.id}')"><i class="ti ti-printer"></i></button>
-      <div style="flex:1;text-align:center;color:var(--success);font-weight:600;font-size:14px"><i class="ti ti-circle-check"></i> Fully Paid</div>`;
+      <div style="flex:1;text-align:center;color:var(--success);font-weight:600;font-size:14px"><i class="ti ti-circle-check"></i> Fully Paid</div>
+      <button class="btn-secondary" style="color:var(--danger)" onclick="confirmDeleteQuote('${quote.id}')"><i class="ti ti-trash"></i></button>`;
   }
   document.getElementById('qd-actions').innerHTML = actions;
 }
