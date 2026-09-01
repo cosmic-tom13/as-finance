@@ -3012,8 +3012,13 @@ function renderQuoteDetail() {
     actions = `<button class="btn-secondary" onclick="generateReceipt('${quote.id}')"><i class="ti ti-printer"></i></button>
       <button class="btn-primary" style="flex:1" onclick="openRecordPaymentModal('${quote.id}')"><i class="ti ti-cash"></i> Record Payment</button>`;
   } else if (quote.status === 'paid') {
+    const missingEntries = (quote.payments || []).filter(p => !_entries.find(e => e.id === p.entryId));
+    const resyncBtn = missingEntries.length
+      ? `<button class="btn-secondary" style="color:var(--warn)" title="Recover missing income entries" onclick="resyncQuoteEntries('${quote.id}')"><i class="ti ti-refresh"></i></button>`
+      : '';
     actions = `<button class="btn-secondary" onclick="generateReceipt('${quote.id}')"><i class="ti ti-printer"></i></button>
       <div style="flex:1;text-align:center;color:var(--success);font-weight:600;font-size:14px"><i class="ti ti-circle-check"></i> Fully Paid</div>
+      ${resyncBtn}
       <button class="btn-secondary" style="color:var(--danger)" onclick="confirmDeleteQuote('${quote.id}')"><i class="ti ti-trash"></i></button>`;
   }
   document.getElementById('qd-actions').innerHTML = actions;
@@ -3177,6 +3182,29 @@ function generateReceipt(id) {
 function confirmDeleteQuote(id) {
   if (!confirm('Delete this quote? This cannot be undone.')) return;
   deleteQuoteById(id);
+}
+
+async function resyncQuoteEntries(quoteId) {
+  const quote = _quotes.find(q => q.id === quoteId);
+  if (!quote || !quote.payments) return;
+  const missing = quote.payments.filter(p => !_entries.find(e => e.id === p.entryId));
+  if (!missing.length) { showToast('All entries already synced', 'success'); return; }
+  let saved = 0;
+  for (const p of missing) {
+    const entry = {
+      id: p.entryId, type: 'income', date: p.date,
+      amount: p.amount, payMethod: p.payMethod,
+      customer: quote.customer, jobId: quote.jobId || '',
+      description: 'Payment for: ' + quote.title,
+      category: '', vendor: '', reimbursable: 'No', markupPct: 0, miles: 0
+    };
+    _entries.unshift(entry);
+    try { await apiPost({ action: 'addEntry', entry }); saved++; }
+    catch(e) { showToast('Sync failed for one entry', 'error'); }
+  }
+  if (saved) { showToast(saved + ' income entr' + (saved === 1 ? 'y' : 'ies') + ' recovered', 'success'); }
+  refreshHome();
+  renderQuoteDetail();
 }
 
 // ─── PROPOSAL GENERATION ──────────────────────────────────────────────────────
