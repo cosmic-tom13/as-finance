@@ -635,8 +635,10 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
   <div class="pin-screen">
     <div class="pin-logo"><i class="ti ti-tool"></i></div>
     <p class="pin-title">Activate Solutions</p>
-    <p class="pin-subtitle">Loading your data…</p>
-    <div style="margin-top:28px"><div class="loading-spinner"></div></div>
+    <p class="pin-subtitle" id="loading-subtitle">Loading your data…</p>
+    <div style="margin-top:28px" id="loading-spinner-wrap"><div class="loading-spinner"></div></div>
+    <button id="loading-retry-btn" class="btn-primary" style="display:none;margin-top:20px;max-width:200px" onclick="retryLoadData()">Retry</button>
+    <button id="loading-offline-btn" class="btn-secondary" style="display:none;margin-top:10px;max-width:200px" onclick="proceedOffline()">Work offline</button>
   </div>
 </div>
 
@@ -1369,14 +1371,30 @@ function setPinCache(p) { try { localStorage.setItem('as_pin_cache', p); } catch
 async function apiGet(params) {
   const url = new URL(SHEETS_URL);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  const r = await fetch(url.toString());
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  return r.json();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const r = await fetch(url.toString(), { signal: ctrl.signal });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    if (data && data.ok === false) throw new Error(data.error || 'Server error');
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 async function apiPost(data) {
-  const r = await fetch(SHEETS_URL, { method: 'POST', body: JSON.stringify(data) });
-  if (!r.ok) throw new Error('HTTP ' + r.status);
-  return r.json();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const r = await fetch(SHEETS_URL, { method: 'POST', body: JSON.stringify(data), signal: ctrl.signal });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const res = await r.json();
+    if (res && res.ok === false) throw new Error(res.error || 'Server error');
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function loadInitialData() {
@@ -1413,6 +1431,46 @@ async function loadOlderEntries() {
   }
 }
 
+// ─── LOAD DATA HELPERS ───────────────────────────────────────────────────────
+let _postLoginCallback = null;
+
+function showLoadingError(isTimeout) {
+  document.getElementById('loading-spinner-wrap').style.display = 'none';
+  document.getElementById('loading-subtitle').textContent = isTimeout
+    ? 'Server is taking too long…'
+    : 'Could not reach server.';
+  document.getElementById('loading-retry-btn').style.display = 'block';
+  document.getElementById('loading-offline-btn').style.display = 'block';
+}
+
+async function retryLoadData() {
+  document.getElementById('loading-spinner-wrap').style.display = 'block';
+  document.getElementById('loading-subtitle').textContent = 'Loading your data…';
+  document.getElementById('loading-retry-btn').style.display = 'none';
+  document.getElementById('loading-offline-btn').style.display = 'none';
+  try {
+    await loadInitialData();
+    if (_postLoginCallback) _postLoginCallback();
+  } catch(e) {
+    showLoadingError(e.name === 'AbortError');
+  }
+}
+
+function proceedOffline() {
+  _dataLoaded = true;
+  if (_postLoginCallback) _postLoginCallback();
+}
+
+async function runPostLogin(callback) {
+  _postLoginCallback = callback;
+  try {
+    await loadInitialData();
+    callback();
+  } catch(e) {
+    showLoadingError(e.name === 'AbortError');
+  }
+}
+
 // ─── OFFLINE QUEUE ────────────────────────────────────────────────────────────
 function queueOffline(action, payload) {
   try {
@@ -1422,15 +1480,33 @@ function queueOffline(action, payload) {
   } catch(e) {}
 }
 async function flushSyncQueue() {
-  try {
-    const q = JSON.parse(localStorage.getItem('as_sync_queue') || '[]');
-    if (!q.length) return;
-    for (const item of q) await apiPost({ action: item.action, ...item.payload });
-    localStorage.removeItem('as_sync_queue');
-    showToast('Synced ' + q.length + ' queued ' + (q.length === 1 ? 'item' : 'items'), 'success');
-  } catch(e) {}
+  let q;
+  try { q = JSON.parse(localStorage.getItem('as_sync_queue') || '[]'); } catch(e) { return; }
+  if (!q.length) return;
+  const remaining = [];
+  let synced = 0;
+  for (const item of q) {
+    try {
+      await apiPost({ action: item.action, ...item.payload });
+      synced++;
+    } catch(e) {
+      remaining.push(item);
+    }
+  }
+  try { localStorage.setItem('as_sync_queue', JSON.stringify(remaining)); } catch(e) {}
+  if (synced > 0) showToast('Synced ' + synced + ' queued ' + (synced === 1 ? 'item' : 'items'), 'success');
+  if (remaining.length > 0) showToast(remaining.length + ' item' + (remaining.length > 1 ? 's' : '') + ' still pending sync', 'error');
 }
 window.addEventListener('online', flushSyncQueue);
+
+// Fire an API post and queue it for retry if offline or if the call fails
+function syncPost(data) {
+  if (!navigator.onLine) { queueOffline(data.action, { ...data }); return; }
+  apiPost(data).catch(() => {
+    queueOffline(data.action, { ...data });
+    showToast('Sync failed — will retry when online', 'error');
+  });
+}
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
 function showToast(msg, type) {
@@ -1457,7 +1533,7 @@ function addVendorToHistory(name) {
   if (idx > -1) _vendors.splice(idx, 1);
   _vendors.unshift(n);
   _vendors = _vendors.slice(0, 50);
-  apiPost({ action: 'saveVendors', vendors: _vendors }).catch(() => {});
+  syncPost({ action: 'saveVendors', vendors: _vendors });
 }
 
 // ─── UI STATE ─────────────────────────────────────────────────────────────────
@@ -1513,19 +1589,14 @@ function pinTap(k) {
       if (pinBuffer === stored) {
         pinBuffer = ''; updateDots();
         if (_dataLoaded) { showScreen('screen-home'); return; }
-        // Show loading screen, fetch data, then go home
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById('screen-loading').classList.add('active');
-        try {
-          await loadInitialData();
-        } catch(e) {
-          showToast('Could not reach server — working offline', 'error');
-          _dataLoaded = true;
-        }
-        startMileageTracking();
-        requestNotificationPermission();
-        geocodeAllJobs();
-        showScreen('screen-home');
+        await runPostLogin(() => {
+          startMileageTracking();
+          requestNotificationPermission();
+          geocodeAllJobs();
+          showScreen('screen-home');
+        });
       } else {
         document.getElementById('pin-error').textContent = 'Incorrect PIN. Try again.';
         pinBuffer = ''; updateDots();
@@ -1619,12 +1690,12 @@ async function tryBiometricLogin() {
     if (_dataLoaded) { showScreen('screen-home'); return; }
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById('screen-loading').classList.add('active');
-    try { await loadInitialData(); }
-    catch(e) { showToast('Could not reach server — working offline', 'error'); _dataLoaded = true; }
-    startMileageTracking();
-    requestNotificationPermission();
-    geocodeAllJobs();
-    showScreen('screen-home');
+    await runPostLogin(() => {
+      startMileageTracking();
+      requestNotificationPermission();
+      geocodeAllJobs();
+      showScreen('screen-home');
+    });
   } catch(e) {
     if (bioBtn) {
       bioBtn.disabled = false;
@@ -1999,7 +2070,7 @@ function confirmInlineCustomer() {
   if (!name) { inp?.focus(); return; }
   if (!_customers.includes(name)) {
     _customers.push(name);
-    apiPost({ action: 'saveCustomers', customers: _customers }).catch(() => showToast('Sync failed', 'error'));
+    syncPost({ action: 'saveCustomers', customers: _customers });
   }
   wizardData.customer = name;
   renderStep();
@@ -2027,7 +2098,7 @@ function confirmInlineJob() {
   const cust = wizardData.customer && wizardData.customer !== 'No customer' ? wizardData.customer : '';
   const id = Date.now().toString();
   _jobs.push({ id, name, location, customer: cust });
-  apiPost({ action: 'saveJobs', jobs: _jobs }).catch(() => showToast('Sync failed', 'error'));
+  syncPost({ action: 'saveJobs', jobs: _jobs });
   wizardData.jobId = id;
   renderStep();
 }
@@ -2379,7 +2450,7 @@ function savePin() {
   if (!/^\d{4}$/.test(v)) { alert('Please enter exactly 4 digits.'); return; }
   _settings.pin = v;
   setPinCache(v);
-  apiPost({ action: 'saveSettings', settings: _settings }).catch(() => showToast('Sync failed', 'error'));
+  syncPost({ action: 'saveSettings', settings: _settings });
   closeModal('modal-pin');
   showToast('PIN updated', 'success');
 }
@@ -2388,7 +2459,7 @@ function saveMarkup() {
   const v = parseFloat(document.getElementById('markup-input').value);
   if (isNaN(v) || v < 0) { alert('Enter a valid number.'); return; }
   _settings.defaultMarkup = v;
-  apiPost({ action: 'saveSettings', settings: _settings }).catch(() => showToast('Sync failed', 'error'));
+  syncPost({ action: 'saveSettings', settings: _settings });
   closeModal('modal-markup');
   refreshSettings();
 }
@@ -2398,7 +2469,7 @@ function addCustomer() {
   if (!v) return;
   if (!_customers.includes(v)) {
     _customers.push(v);
-    apiPost({ action: 'saveCustomers', customers: _customers }).catch(() => showToast('Sync failed', 'error'));
+    syncPost({ action: 'saveCustomers', customers: _customers });
   }
   document.getElementById('new-customer-input').value = '';
   closeModal('modal-addcustomer');
@@ -2412,7 +2483,7 @@ function addJobFromSettings() {
   const cust = document.getElementById('new-job-modal-customer').value || '';
   const id = Date.now().toString();
   _jobs.push({ id, name, location: loc, customer: cust });
-  apiPost({ action: 'saveJobs', jobs: _jobs }).catch(() => showToast('Sync failed', 'error'));
+  syncPost({ action: 'saveJobs', jobs: _jobs });
   document.getElementById('new-job-modal-input').value = '';
   document.getElementById('new-job-modal-location').value = '';
   closeModal('modal-addjob');
@@ -2421,13 +2492,13 @@ function addJobFromSettings() {
 
 function removeJob(i) {
   _jobs.splice(i, 1);
-  apiPost({ action: 'saveJobs', jobs: _jobs }).catch(() => showToast('Sync failed', 'error'));
+  syncPost({ action: 'saveJobs', jobs: _jobs });
   refreshSettings();
 }
 
 function removeCustomer(i) {
   _customers.splice(i, 1);
-  apiPost({ action: 'saveCustomers', customers: _customers }).catch(() => showToast('Sync failed', 'error'));
+  syncPost({ action: 'saveCustomers', customers: _customers });
   refreshSettings();
 }
 
@@ -2436,7 +2507,7 @@ function addCategory() {
   if (!v) return;
   if (!_categories.includes(v)) {
     _categories.push(v);
-    apiPost({ action: 'saveCategories', categories: _categories }).catch(() => showToast('Sync failed', 'error'));
+    syncPost({ action: 'saveCategories', categories: _categories });
   }
   document.getElementById('new-cat-input').value = '';
   closeModal('modal-addcat');
@@ -2445,7 +2516,7 @@ function addCategory() {
 
 function removeCategory(i) {
   _categories.splice(i, 1);
-  apiPost({ action: 'saveCategories', categories: _categories }).catch(() => showToast('Sync failed', 'error'));
+  syncPost({ action: 'saveCategories', categories: _categories });
   refreshSettings();
 }
 
@@ -2756,7 +2827,8 @@ async function loadQuotesData() {
     if (data.priceGuide && data.priceGuide.length) _priceGuide = data.priceGuide;
     _quotesLoaded = true;
   } catch(e) {
-    showToast('Could not load quotes', 'error');
+    showToast('Could not load quotes — working from local data', 'error');
+    _quotesLoaded = true;
   }
 }
 
@@ -2915,7 +2987,14 @@ async function createNewQuote() {
   };
   _quotes.unshift(quote);
   _quotesLoaded = true;
-  await apiPost({ action: 'addQuote', quote }).catch(() => showToast('Sync failed', 'error'));
+  if (!navigator.onLine) {
+    queueOffline('addQuote', { quote });
+  } else {
+    apiPost({ action: 'addQuote', quote }).catch(() => {
+      queueOffline('addQuote', { quote });
+      showToast('Sync failed — will retry when online', 'error');
+    });
+  }
   openQuoteDetail(quote.id);
 }
 
@@ -3548,7 +3627,7 @@ async function savePriceGuideItem() {
   }
   closeModal('modal-price-guide-item');
   refreshSettings();
-  apiPost({ action: 'savePriceGuide', priceGuide: _priceGuide }).catch(() => showToast('Sync failed', 'error'));
+  syncPost({ action: 'savePriceGuide', priceGuide: _priceGuide });
 }
 
 async function deletePriceGuideItem() {
@@ -3558,7 +3637,7 @@ async function deletePriceGuideItem() {
   _priceGuide = _priceGuide.filter(i => i.id !== id);
   closeModal('modal-price-guide-item');
   refreshSettings();
-  apiPost({ action: 'savePriceGuide', priceGuide: _priceGuide }).catch(() => showToast('Sync failed', 'error'));
+  syncPost({ action: 'savePriceGuide', priceGuide: _priceGuide });
 }
 
 // ─── GPS MILEAGE TRACKING ─────────────────────────────────────────────────────

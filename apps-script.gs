@@ -247,14 +247,20 @@ function doPost(e) {
   try {
     params = JSON.parse(e.postData.contents);
   } catch (err) {
-    // Fall back to form params
     params = e && e.parameter ? e.parameter : {};
   }
 
   var action = params.action || '';
 
+  // Prevent concurrent writes from corrupting sheet state
+  var lock = LockService.getScriptLock();
   try {
-    ensureHeaders();
+    lock.waitLock(10000);
+  } catch(err) {
+    return respondError('Server busy — please retry');
+  }
+
+  try {
     switch (action) {
       case 'addEntry':       return handleAddEntry(params);
       case 'updateEntry':    return handleUpdateEntry(params);
@@ -274,6 +280,8 @@ function doPost(e) {
     }
   } catch (err) {
     return respondError(err.toString());
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -600,4 +608,52 @@ function setupSpreadsheet() {
   ensureSheetHeaders(SHEET_CHATS, CHATS_HEADERS);
 
   SpreadsheetApp.getUi().alert('Setup complete! All tabs created.');
+}
+
+// ── Weekly backup ────────────────────────────────────────────────────────────
+
+function exportAllDataToJSON() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var tabs = [
+    SHEET_ENTRIES, SHEET_CUSTOMERS, SHEET_JOBS, SHEET_CATEGORIES,
+    SHEET_VENDORS, SHEET_SETTINGS, SHEET_QUOTES, 'PriceGuide', SHEET_LEADS, SHEET_CHATS
+  ];
+  var backup = {};
+  tabs.forEach(function(name) {
+    var sheet = ss.getSheetByName(name);
+    if (!sheet) { backup[name] = []; return; }
+    var data = sheet.getDataRange().getValues();
+    if (!data || data.length < 2) { backup[name] = []; return; }
+    var headers = data[0];
+    backup[name] = data.slice(1).map(function(row) {
+      var obj = {};
+      headers.forEach(function(h, i) { obj[h] = row[i]; });
+      return obj;
+    });
+  });
+  var json = JSON.stringify(backup);
+  var filename = 'AS_Finance_Backup_' + Utilities.formatDate(new Date(), 'America/Chicago', 'yyyy-MM-dd') + '.json';
+  var folder = DriveApp.getRootFolder();
+  // Keep backups in a dedicated folder if it exists
+  var folders = DriveApp.getFoldersByName('AS Finance Backups');
+  if (folders.hasNext()) folder = folders.next();
+  DriveApp.createFile(filename, json, MimeType.PLAIN_TEXT).moveTo(folder);
+  Logger.log('Backup saved: ' + filename);
+}
+
+function createWeeklyBackupTrigger() {
+  // Run this once from the Apps Script editor to register the weekly trigger.
+  // Delete existing triggers for this function first to avoid duplicates.
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'exportAllDataToJSON') {
+      ScriptApp.deleteTrigger(t);
+    }
+  });
+  ScriptApp.newTrigger('exportAllDataToJSON')
+    .timeBased()
+    .everyWeeks(1)
+    .onWeekDay(ScriptApp.WeekDay.SUNDAY)
+    .atHour(3)
+    .create();
+  Logger.log('Weekly backup trigger created.');
 }
