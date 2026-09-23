@@ -286,6 +286,9 @@ html, body {
 .guide-item-price { font-size: 13px; color: var(--text2); flex-shrink: 0; }
 .guide-item-unit { font-size: 11px; color: var(--text3); margin-top: 1px; }
 .guide-selected-hint { font-size: 12px; color: var(--brand); padding: 6px 0 2px; }
+.type-toggle-btn { flex:1; padding:8px 4px; border:1.5px solid var(--border); border-radius:var(--radius-sm); background:var(--surface2); color:var(--text2); font-size:13px; font-weight:500; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; transition:all .15s; }
+.type-toggle-btn.active { border-color:var(--brand); background:var(--brand-light); color:var(--brand-dark); }
+.type-toggle-btn i { font-size:15px; }
 
 /* QUOTE FORM */
 .quote-form { display: flex; flex-direction: column; gap: 14px; padding: 16px; }
@@ -1167,6 +1170,11 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
       <!-- populated by openAddLineItemModal() -->
     </div>
     <div id="guide-selected-hint" class="guide-selected-hint" style="display:none"></div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button id="li-type-labor" class="type-toggle-btn active" onclick="setLineItemType('labor')"><i class="ti ti-hammer"></i> Labor</button>
+      <button id="li-type-material" class="type-toggle-btn" onclick="setLineItemType('material')"><i class="ti ti-package"></i> Materials</button>
+      <button id="li-type-other" class="type-toggle-btn" onclick="setLineItemType('other')"><i class="ti ti-dots"></i> Other</button>
+    </div>
     <label class="field-label">Description</label>
     <input type="text" id="li-desc" placeholder="What work is this for?">
     <div style="display:flex;gap:10px;margin-top:12px">
@@ -3423,9 +3431,18 @@ async function removeLineItem(quoteId, itemId) {
 
 // ─── ADD LINE ITEM MODAL ──────────────────────────────────────────────────────
 let _selectedGuideItem = null;
+let _lineItemType = 'labor';
+
+function setLineItemType(type) {
+  _lineItemType = type;
+  ['labor','material','other'].forEach(t => {
+    document.getElementById('li-type-' + t).classList.toggle('active', t === type);
+  });
+}
 
 function openAddLineItemModal() {
   _selectedGuideItem = null;
+  setLineItemType('labor');
   document.getElementById('guide-search').value = '';
   document.getElementById('li-desc').value = '';
   document.getElementById('li-qty').value = '1';
@@ -3494,7 +3511,8 @@ function confirmAddLineItem() {
     qty,
     unitPrice,
     total,
-    unit: _selectedGuideItem ? _selectedGuideItem.unit : ''
+    unit: _selectedGuideItem ? _selectedGuideItem.unit : '',
+    type: _lineItemType || 'labor'
   };
   const quote = _quotes.find(q => q.id === _currentQuoteId);
   if (!quote) return;
