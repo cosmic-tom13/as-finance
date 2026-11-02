@@ -208,7 +208,7 @@ function handleGetAllData(params) {
     categories: getColumnValues(SHEET_CATEGORIES),
     vendors:    getColumnValues(SHEET_VENDORS),
     settings:   getSettingsObj(),
-    priceGuide: getPriceGuide()
+    priceGuide: getPriceGuideItems()
   });
 }
 
