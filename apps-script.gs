@@ -47,6 +47,7 @@ var COL = {
   markupPct:    13
 };
 var ENTRY_COL_COUNT = 13;
+var QUOTE_COL_COUNT = 13;
 
 // ─── CORS helper ─────────────────────────────────────────────────────────────
 function respond(data) {

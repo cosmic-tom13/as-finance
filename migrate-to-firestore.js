@@ -18,7 +18,8 @@
  *      getAllData endpoint is deployed (redeploy Apps Script first)
  */
 
-const admin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 const https = require('https');
 
 // ── CONFIG ──────────────────────────────────────────────────────────────────
@@ -33,8 +34,8 @@ if (!SERVICE_ACCOUNT_PATH) {
 
 // ── INIT FIREBASE ────────────────────────────────────────────────────────────
 const serviceAccount = require(require('path').resolve(SERVICE_ACCOUNT_PATH));
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-const db = admin.firestore();
+initializeApp({ credential: cert(serviceAccount) });
+const db = getFirestore();
 
 // ── FETCH FROM APPS SCRIPT ──────────────────────────────────────────────────
 function fetchAllData() {
