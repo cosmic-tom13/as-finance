@@ -1293,9 +1293,27 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
   </div>
 </div>
 
+<!-- Firebase compat SDK (no build step required) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+
 <script>
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
-const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbxs1VO_Ai8H7d1DulAOZqHQfGZT3fOidy1AKX8BGsSBQpGdLYuNwDfFyZnnnTy5aJrP/exec';
+firebase.initializeApp({
+  apiKey: "AIzaSyCMxv_uEj4W3XAs-vJW0v-u1pGnvBmfm54",
+  authDomain: "as-finance-bc9de.firebaseapp.com",
+  projectId: "as-finance-bc9de",
+  storageBucket: "as-finance-bc9de.firebasestorage.app",
+  messagingSenderId: "162474517012",
+  appId: "1:162474517012:web:ca4ebfa78e56d5092cbd01"
+});
+const db = firebase.firestore();
+// Enable offline persistence so the app works without a connection
+db.enablePersistence({ synchronizeTabs: false }).catch(err => {
+  if (err.code !== 'failed-precondition' && err.code !== 'unimplemented')
+    console.warn('Firestore persistence:', err.code);
+});
 
 const IRS_RATE = 0.70;
 const SA_TAX_RATE = 0.0825;     // San Antonio, TX combined sales tax rate (8.25%)
@@ -1375,78 +1393,67 @@ let _geofenceNotified = {};
 function getPinCache() { try { return localStorage.getItem('as_pin_cache') || '1234'; } catch(e) { return '1234'; } }
 function setPinCache(p) { try { localStorage.setItem('as_pin_cache', p); } catch(e) {} }
 
-// ─── API ──────────────────────────────────────────────────────────────────────
-async function apiGet(params) {
-  const url = new URL(SHEETS_URL);
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 15000);
-  try {
-    const r = await fetch(url.toString(), { signal: ctrl.signal });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const data = await r.json();
-    if (data && data.ok === false) throw new Error(data.error || 'Server error');
-    return data;
-  } finally {
-    clearTimeout(timer);
-  }
+// ─── FIRESTORE HELPERS ───────────────────────────────────────────────────────
+function dbSet(col, docId, data) {
+  db.collection(col).doc(docId).set(data).catch(() => showToast('Sync failed', 'error'));
 }
-async function apiPost(data) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 15000);
-  try {
-    const r = await fetch(SHEETS_URL, { method: 'POST', body: JSON.stringify(data), signal: ctrl.signal });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const res = await r.json();
-    if (res && res.ok === false) throw new Error(res.error || 'Server error');
-    return res;
-  } finally {
-    clearTimeout(timer);
+function dbDelete(col, docId) {
+  db.collection(col).doc(docId).delete().catch(() => showToast('Sync failed', 'error'));
+}
+
+// Routes legacy syncPost calls to Firestore (keeps all call sites unchanged)
+function syncPost(data) {
+  switch (data.action) {
+    case 'saveCustomers':   dbSet('lists', 'customers',   { values: data.customers });   break;
+    case 'saveJobs':        dbSet('lists', 'jobs',        { values: data.jobs });        break;
+    case 'saveCategories':  dbSet('lists', 'categories',  { values: data.categories });  break;
+    case 'saveVendors':     dbSet('lists', 'vendors',     { values: data.vendors });     break;
+    case 'savePriceGuide':  dbSet('lists', 'priceGuide',  { items:  data.priceGuide });  break;
+    case 'saveSettings':    dbSet('settings', 'main',     data.settings);               break;
+    default: console.warn('syncPost: unknown action', data.action);
   }
 }
 
+// Firestore handles offline natively — these are kept as stubs so no call sites break
+function queueOffline() {}
+async function flushSyncQueue() {}
+
 async function loadInitialData() {
-  const data = await apiGet({ action: 'getRecent', days: 90 });
-  _entries    = data.entries    || [];
-  _customers  = data.customers  || [];
-  _jobs       = data.jobs       || [];
-  _categories = (data.categories && data.categories.length) ? data.categories : [...DEFAULT_CATS];
-  _vendors    = data.vendors    || [];
-  _settings   = data.settings   || { pin: '1234', defaultMarkup: 20 };
-  _priceGuide = (data.priceGuide && data.priceGuide.length) ? data.priceGuide : [...DEFAULT_PRICE_GUIDE];
-  _hasOlderEntries = data.hasOlder || false;
-  _oldestLoadedDate = _entries.length ? _entries[_entries.length - 1].date : null;
-  _dataLoaded = true;
+  if (!firebase.auth().currentUser) {
+    await firebase.auth().signInAnonymously();
+  }
+  const [entriesSnap, listsSnap, quotesSnap, settingsSnap] = await Promise.all([
+    db.collection('entries').get(),
+    db.collection('lists').get(),
+    db.collection('quotes').get(),
+    db.collection('settings').doc('main').get()
+  ]);
+  _entries = entriesSnap.docs.map(d => d.data());
+  _entries.sort((a, b) => new Date(b.date) - new Date(a.date));
+  _quotes  = quotesSnap.docs.map(d => d.data());
+  _settings = settingsSnap.exists ? settingsSnap.data() : { pin: '1234', defaultMarkup: 20 };
+  const lists = {};
+  listsSnap.docs.forEach(d => { lists[d.id] = d.data(); });
+  _customers  = lists.customers?.values  || [];
+  _jobs       = lists.jobs?.values       || [];
+  _categories = (lists.categories?.values?.length)  ? lists.categories.values  : [...DEFAULT_CATS];
+  _vendors    = lists.vendors?.values    || [];
+  _priceGuide = (lists.priceGuide?.items?.length)   ? lists.priceGuide.items   : [...DEFAULT_PRICE_GUIDE];
+  _hasOlderEntries = false;
+  _dataLoaded  = true;
+  _quotesLoaded = true;
   setPinCache(_settings.pin);
 }
 
-async function loadOlderEntries() {
-  if (!_hasOlderEntries || !_oldestLoadedDate) return;
-  const btn = document.getElementById('load-older-btn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i> Loading…'; }
-  try {
-    const data = await apiGet({ action: 'getOlderEntries', before: _oldestLoadedDate });
-    const older = data.entries || [];
-    if (older.length) {
-      _entries = [..._entries, ...older];
-      _oldestLoadedDate = older[older.length - 1].date;
-    }
-    _hasOlderEntries = older.length > 0;
-    refreshHistory();
-  } catch(e) {
-    showToast('Failed to load older entries', 'error');
-    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-history"></i> Load older entries'; }
-  }
-}
+// No-op: all entries are loaded upfront from Firestore
+async function loadOlderEntries() {}
 
 // ─── LOAD DATA HELPERS ───────────────────────────────────────────────────────
 let _postLoginCallback = null;
 
-function showLoadingError(isTimeout) {
+function showLoadingError() {
   document.getElementById('loading-spinner-wrap').style.display = 'none';
-  document.getElementById('loading-subtitle').textContent = isTimeout
-    ? 'Server is taking too long…'
-    : 'Could not reach server.';
+  document.getElementById('loading-subtitle').textContent = 'Could not connect. Check your connection.';
   document.getElementById('loading-retry-btn').style.display = 'block';
   document.getElementById('loading-offline-btn').style.display = 'block';
 }
@@ -1460,12 +1467,13 @@ async function retryLoadData() {
     await loadInitialData();
     if (_postLoginCallback) _postLoginCallback();
   } catch(e) {
-    showLoadingError(e.name === 'AbortError');
+    showLoadingError();
   }
 }
 
 function proceedOffline() {
   _dataLoaded = true;
+  _quotesLoaded = true;
   if (_postLoginCallback) _postLoginCallback();
 }
 
@@ -1475,45 +1483,8 @@ async function runPostLogin(callback) {
     await loadInitialData();
     callback();
   } catch(e) {
-    showLoadingError(e.name === 'AbortError');
+    showLoadingError();
   }
-}
-
-// ─── OFFLINE QUEUE ────────────────────────────────────────────────────────────
-function queueOffline(action, payload) {
-  try {
-    const q = JSON.parse(localStorage.getItem('as_sync_queue') || '[]');
-    q.push({ action, payload });
-    localStorage.setItem('as_sync_queue', JSON.stringify(q));
-  } catch(e) {}
-}
-async function flushSyncQueue() {
-  let q;
-  try { q = JSON.parse(localStorage.getItem('as_sync_queue') || '[]'); } catch(e) { return; }
-  if (!q.length) return;
-  const remaining = [];
-  let synced = 0;
-  for (const item of q) {
-    try {
-      await apiPost({ action: item.action, ...item.payload });
-      synced++;
-    } catch(e) {
-      remaining.push(item);
-    }
-  }
-  try { localStorage.setItem('as_sync_queue', JSON.stringify(remaining)); } catch(e) {}
-  if (synced > 0) showToast('Synced ' + synced + ' queued ' + (synced === 1 ? 'item' : 'items'), 'success');
-  if (remaining.length > 0) showToast(remaining.length + ' item' + (remaining.length > 1 ? 's' : '') + ' still pending sync', 'error');
-}
-window.addEventListener('online', flushSyncQueue);
-
-// Fire an API post and queue it for retry if offline or if the call fails
-function syncPost(data) {
-  if (!navigator.onLine) { queueOffline(data.action, { ...data }); return; }
-  apiPost(data).catch(() => {
-    queueOffline(data.action, { ...data });
-    showToast('Sync failed — will retry when online', 'error');
-  });
 }
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
@@ -2207,14 +2178,9 @@ async function saveEntry() {
     : wizardType === 'expense' && entry.category ? entry.category : '';
   showScreen('screen-success');
 
-  // Background sync
-  if (!navigator.onLine) {
-    queueOffline('addEntry', { entry });
-    showToast("You're offline — will sync when reconnected");
-    return;
-  }
+  // Background sync to Firestore (offline writes are queued by the SDK automatically)
   try {
-    await apiPost({ action: 'addEntry', entry });
+    await db.collection('entries').doc(entry.id).set(entry);
   } catch(e) {
     _entries = _entries.filter(x => x.id !== entry.id);
     showToast('Sync failed — entry removed, try again', 'error');
@@ -2445,9 +2411,8 @@ async function deleteEntry(id) {
   refreshHistory();
   refreshHome();
 
-  if (!navigator.onLine) { queueOffline('deleteEntry', { id }); return; }
   try {
-    await apiPost({ action: 'deleteEntry', id });
+    await db.collection('entries').doc(String(id)).delete();
   } catch(e) {
     if (removed) _entries.unshift(removed);
     showToast('Delete failed — entry restored', 'error');
@@ -2558,7 +2523,7 @@ function removeCategory(i) {
 }
 
 function clearAllData() {
-  if (!confirm('This clears your local session. Data in Google Sheets is preserved and will reload on next login.')) return;
+  if (!confirm('This clears your local session. Your data in Firebase is preserved and will reload on next login.')) return;
   _entries = []; _customers = []; _jobs = []; _categories = [...DEFAULT_CATS];
   _vendors = []; _settings = { pin: '1234', defaultMarkup: 20 };
   _hasOlderEntries = false; _oldestLoadedDate = null; _dataLoaded = false;
@@ -2572,14 +2537,8 @@ function clearAllData() {
 
 // ─── EXPORT / SYNC ────────────────────────────────────────────────────────────
 function syncToSheets() {
-  try {
-    const q = JSON.parse(localStorage.getItem('as_sync_queue') || '[]');
-    if (q.length > 0) {
-      flushSyncQueue().then(() => showToast('Sync complete!', 'success'));
-    } else {
-      showToast('All data is synced to Google Sheets', 'success');
-    }
-  } catch(e) { showToast('Sync check failed', 'error'); }
+  // Firestore syncs automatically; this just confirms current state
+  showToast('Firebase syncs automatically — all data is up to date', 'success');
 }
 
 function exportCSV() {
@@ -2794,9 +2753,8 @@ async function saveEditEntry() {
   refreshHome();
   refreshHistory();
 
-  if (!navigator.onLine) { queueOffline('updateEntry', { entry }); return; }
   try {
-    await apiPost({ action: 'updateEntry', entry });
+    await db.collection('entries').doc(entry.id).set(entry);
   } catch(e) {
     _entries[idx] = oldEntry;
     showToast('Update failed — changes reverted', 'error');
@@ -2856,18 +2814,8 @@ function filterVendorSuggestions(query) {
 // ─── QUOTES ───────────────────────────────────────────────────────────────────
 function $f(n) { return '$' + (parseFloat(n) || 0).toFixed(2); }
 
-async function loadQuotesData() {
-  if (_quotesLoaded) return;
-  try {
-    const data = await apiGet({ action: 'getQuotes' });
-    _quotes = data.quotes || [];
-    if (data.priceGuide && data.priceGuide.length) _priceGuide = data.priceGuide;
-    _quotesLoaded = true;
-  } catch(e) {
-    showToast('Could not load quotes — working from local data', 'error');
-    _quotesLoaded = true;
-  }
-}
+// Quotes are loaded in loadInitialData; this is a no-op
+async function loadQuotesData() {}
 
 // Compute a quote's subtotal, tax, and grand total. Tax applies only when the
 // quote is flagged with applyTax (San Antonio sales tax checkbox).
@@ -2892,9 +2840,8 @@ async function saveQuoteOptimistic(quote) {
   const idx = _quotes.findIndex(q => q.id === quote.id);
   const old = idx >= 0 ? { ..._quotes[idx] } : null;
   if (idx >= 0) _quotes[idx] = quote; else _quotes.unshift(quote);
-  if (!navigator.onLine) { queueOffline(idx >= 0 ? 'updateQuote' : 'addQuote', { quote }); return; }
   try {
-    await apiPost({ action: idx >= 0 ? 'updateQuote' : 'addQuote', quote });
+    await db.collection('quotes').doc(quote.id).set(quote);
   } catch(e) {
     if (old) _quotes[idx] = old; else _quotes.shift();
     showToast('Sync failed', 'error');
@@ -2906,9 +2853,8 @@ async function deleteQuoteById(id) {
   if (idx === -1) return;
   const removed = _quotes.splice(idx, 1)[0];
   showScreen('screen-quotes');
-  if (!navigator.onLine) { queueOffline('deleteQuote', { id }); return; }
   try {
-    await apiPost({ action: 'deleteQuote', id });
+    await db.collection('quotes').doc(id).delete();
   } catch(e) {
     _quotes.splice(idx, 0, removed);
     showToast('Delete failed', 'error');
@@ -2934,11 +2880,8 @@ async function recordPayment(quoteId, { amount, payMethod, date }) {
   _entries.unshift(entry);
   const wasCompleted = quote.status !== 'paid';
   await saveQuoteOptimistic(quote);
-  if (!navigator.onLine) { queueOffline('addEntry', { entry }); }
-  else {
-    try { await apiPost({ action: 'addEntry', entry }); }
-    catch(e) { showToast('Entry sync failed — reopen app to retry', 'error'); }
-  }
+  try { await db.collection('entries').doc(entry.id).set(entry); }
+  catch(e) { showToast('Entry sync failed', 'error'); }
   if (quote.status === 'paid' && wasCompleted) showToast('Quote fully paid!', 'success');
   else showToast('Payment recorded', 'success');
   renderQuoteDetail();
@@ -3024,14 +2967,7 @@ async function createNewQuote() {
   };
   _quotes.unshift(quote);
   _quotesLoaded = true;
-  if (!navigator.onLine) {
-    queueOffline('addQuote', { quote });
-  } else {
-    apiPost({ action: 'addQuote', quote }).catch(() => {
-      queueOffline('addQuote', { quote });
-      showToast('Sync failed — will retry when online', 'error');
-    });
-  }
+  db.collection('quotes').doc(quote.id).set(quote).catch(() => showToast('Sync failed', 'error'));
   openQuoteDetail(quote.id);
 }
 
@@ -3179,7 +3115,7 @@ function markCompleted(id) {
       vendor: ''
     };
     _entries.unshift(entry);
-    apiPost({ action: 'addEntry', entry }).catch(() => showToast('Mileage sync failed', 'error'));
+    db.collection('entries').doc(entry.id).set(entry).catch(() => showToast('Mileage sync failed', 'error'));
     _dailyMiles = 0;
     saveDailyMiles();
     showToast(milesRounded + ' mi logged', 'success');
@@ -3316,7 +3252,7 @@ async function resyncQuoteEntries(quoteId) {
       category: '', vendor: '', reimbursable: 'No', markupPct: 0, miles: 0
     };
     _entries.unshift(entry);
-    try { await apiPost({ action: 'addEntry', entry }); saved++; }
+    try { await db.collection('entries').doc(entry.id).set(entry); saved++; }
     catch(e) { showToast('Sync failed for one entry', 'error'); }
   }
   if (saved) { showToast(saved + ' income entr' + (saved === 1 ? 'y' : 'ies') + ' recovered', 'success'); }

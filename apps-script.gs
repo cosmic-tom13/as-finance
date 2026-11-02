@@ -171,10 +171,44 @@ function doGet(e) {
     if (action === 'getRecent')       return handleGetRecent(params);
     if (action === 'getOlderEntries') return handleGetOlderEntries(params);
     if (action === 'getQuotes')       return handleGetQuotes(params);
+    if (action === 'getAllData')       return handleGetAllData(params);
     return respondError('Unknown GET action: ' + action);
   } catch (err) {
     return respondError(err.toString());
   }
+}
+
+// Returns ALL data for one-time Firebase migration. Gated by a secret token.
+function handleGetAllData(params) {
+  if ((params.secret || '') !== 'as-migrate-2026') return respondError('Unauthorized');
+
+  var entriesSheet = getSheet(SHEET_ENTRIES);
+  var lastRow = entriesSheet.getLastRow();
+  var entries = [];
+  if (lastRow >= 2) {
+    var rows = entriesSheet.getRange(2, 1, lastRow - 1, ENTRY_COL_COUNT).getValues();
+    entries = rows.filter(function(r) { return r[0]; }).map(rowToEntry);
+  }
+
+  var quotesSheet = getSheet(SHEET_QUOTES);
+  var qLastRow = quotesSheet.getLastRow();
+  var quotes = [];
+  if (qLastRow >= 1) {
+    var qRows = quotesSheet.getRange(1, 1, qLastRow, QUOTE_COL_COUNT).getValues();
+    quotes = qRows.filter(function(r) { return r[0]; }).map(rowToQuote);
+  }
+
+  return respond({
+    ok:         true,
+    entries:    entries,
+    quotes:     quotes,
+    customers:  getColumnValues(SHEET_CUSTOMERS),
+    jobs:       getJobs(),
+    categories: getColumnValues(SHEET_CATEGORIES),
+    vendors:    getColumnValues(SHEET_VENDORS),
+    settings:   getSettingsObj(),
+    priceGuide: getPriceGuide()
+  });
 }
 
 function handleGetRecent(params) {
