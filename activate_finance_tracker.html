@@ -1559,7 +1559,10 @@ let reportDateTo = '';
 let currentDetailId = null;
 
 // ─── NAVIGATION ───────────────────────────────────────────────────────────────
-function showScreen(id) {
+let _screenStack = [];  // tracks screen history for hardware back button
+let _poppingState = false;
+
+function showScreen(id, _fromPop) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   closeAllModals();
@@ -1575,7 +1578,33 @@ function showScreen(id) {
   if (screens.includes(id)) {
     document.querySelectorAll('#' + id + ' .nav-btn')[navMap[id]]?.classList.add('active');
   }
+
+  // Push history entry so Android back button navigates within the app
+  if (!_fromPop) {
+    _screenStack.push(id);
+    history.pushState({ screen: id }, '');
+  }
 }
+
+// Handle Android/browser hardware back button
+window.addEventListener('popstate', function(e) {
+  // Pop our stack — the browser already moved back one entry
+  _screenStack.pop();
+  const prev = _screenStack[_screenStack.length - 1];
+  if (prev) {
+    // Navigate to previous screen without pushing another history entry
+    _poppingState = true;
+    showScreen(prev, true);
+    _poppingState = false;
+    // Re-push so the stack stays valid for the next back press
+    history.pushState({ screen: prev }, '');
+  } else {
+    // Stack is empty — let the app go to home rather than close
+    _screenStack.push('screen-home');
+    history.pushState({ screen: 'screen-home' }, '');
+    showScreen('screen-home', true);
+  }
+});
 
 // ─── PIN ──────────────────────────────────────────────────────────────────────
 (function initPin() {
