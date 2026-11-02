@@ -220,10 +220,15 @@ html, body {
 
 /* QUOTE STATUS TAGS */
 .tag { display: inline-block; padding: 3px 10px; border-radius: var(--radius-pill); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
-.tag.draft      { background: var(--surface2); color: var(--text3); }
-.tag.finalized  { background: var(--brand-light); color: var(--brand-dark); }
-.tag.completed  { background: var(--warn-bg); color: var(--warn); }
-.tag.paid       { background: var(--success-bg); color: var(--success); }
+.tag.draft       { background: var(--surface2); color: var(--text3); }
+.tag.sent        { background: var(--warn-bg); color: var(--warn); }
+.tag.approved    { background: var(--brand-light); color: var(--brand); }
+.tag.in_progress { background: var(--brand-light); color: var(--brand-dark); }
+.tag.completed   { background: #F0E9FC; color: #7B4FB5; }
+.tag.paid        { background: var(--success-bg); color: var(--success); }
+.tag.declined    { background: var(--danger-bg); color: var(--danger); }
+.tag.cancelled   { background: var(--danger-bg); color: var(--danger); }
+.tag.superseded  { background: var(--surface2); color: var(--text3); }
 
 /* QUOTE LIST CARDS */
 .quote-item {
@@ -968,6 +973,7 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
     <button class="filter-tab" onclick="setQuoteFilter('draft',this)">Draft</button>
     <button class="filter-tab" onclick="setQuoteFilter('active',this)">Active</button>
     <button class="filter-tab" onclick="setQuoteFilter('paid',this)">Paid</button>
+    <button class="filter-tab" onclick="setQuoteFilter('closed',this)">Closed</button>
   </div>
   <div class="scrollable" style="padding-top:12px">
     <div id="quotes-list" class="entry-list"></div>
@@ -1425,6 +1431,20 @@ async function loadInitialData() {
   _entries.sort((a, b) => new Date(b.date) - new Date(a.date));
   _quotes  = quotesSnap.docs.map(d => d.data());
   _settings = settingsSnap.exists ? settingsSnap.data() : { pin: '1234', defaultMarkup: 20 };
+  // One-time migration: finalized → sent; backfill version/parentId/quoteNumber
+  let needsSettingsSave = false;
+  const migrated = [];
+  _quotes.forEach(q => {
+    let changed = false;
+    if (q.status === 'finalized') { q.status = 'sent'; changed = true; }
+    if (!q.version) { q.version = 1; changed = true; }
+    if (!('parentId' in q)) { q.parentId = null; changed = true; }
+    if (!q.quoteNumber) { q.quoteNumber = ''; changed = true; }
+    if (changed) migrated.push(q);
+  });
+  if (migrated.length) {
+    migrated.forEach(q => db.collection('quotes').doc(q.id).set(q).catch(() => {}));
+  }
   const lists = {};
   listsSnap.docs.forEach(d => { lists[d.id] = d.data(); });
   _customers  = lists.customers?.values  || [];
@@ -2821,11 +2841,33 @@ function quoteTotals(quote) {
   return { subtotal, taxRate, tax, total, paid, balance: total - paid };
 }
 
+const QUOTE_TERMINAL = ['paid', 'superseded', 'declined', 'cancelled'];
+const QUOTE_ACTIVE   = ['sent', 'approved', 'in_progress', 'completed'];
+
+function quoteStatusLabel(s) {
+  return { in_progress: 'In Progress', draft: 'Draft', sent: 'Sent', approved: 'Approved',
+           completed: 'Completed', paid: 'Paid', declined: 'Declined',
+           cancelled: 'Cancelled', superseded: 'Superseded' }[s] || s;
+}
+
+function generateQuoteNumber() {
+  const year = new Date().getFullYear();
+  if ((_settings.quoteYear || 0) !== year) {
+    _settings.quoteCounter = 0;
+    _settings.quoteYear = year;
+  }
+  _settings.quoteCounter = (_settings.quoteCounter || 0) + 1;
+  syncPost({ action: 'saveSettings', settings: _settings });
+  return `Q-${year}-${String(_settings.quoteCounter).padStart(3, '0')}`;
+}
+
 function recalcQuoteStatus(quote) {
   const { total } = quoteTotals(quote);
   quote.totalAmount = total;
   quote.amountPaid = (quote.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
-  if (total > 0 && quote.amountPaid >= total && quote.status !== 'draft') quote.status = 'paid';
+  if (!QUOTE_TERMINAL.includes(quote.status) && quote.status !== 'draft' && total > 0 && quote.amountPaid >= total) {
+    quote.status = 'paid';
+  }
 }
 
 async function saveQuoteOptimistic(quote) {
@@ -2890,8 +2932,9 @@ async function refreshQuotesList() {
   const filter = _quoteFilter || 'all';
   let list = [..._quotes].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   if (filter === 'draft') list = list.filter(q => q.status === 'draft');
-  else if (filter === 'active') list = list.filter(q => q.status === 'finalized' || q.status === 'completed');
+  else if (filter === 'active') list = list.filter(q => QUOTE_ACTIVE.includes(q.status));
   else if (filter === 'paid') list = list.filter(q => q.status === 'paid');
+  else if (filter === 'closed') list = list.filter(q => ['declined','cancelled','superseded'].includes(q.status));
   const el = document.getElementById('quotes-list');
   if (!list.length) {
     el.innerHTML = '<div class="empty-state"><i class="ti ti-file-invoice"></i><p>No quotes yet. Tap + to create one.</p></div>';
@@ -2904,11 +2947,12 @@ function quoteCardHTML(q) {
   const { total, balance } = quoteTotals(q);
   const dateStr = q.date ? new Date(q.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
   const balHtml = balance > 0.001 && q.status !== 'draft' ? `<div class="quote-bal">Due: ${$f(balance)}</div>` : '';
+  const numBadge = q.quoteNumber ? `<span style="font-size:11px;color:var(--text3);font-weight:500">${q.quoteNumber}${q.version > 1 ? ' v'+q.version : ''}</span> · ` : '';
   return `<div class="quote-item" onclick="openQuoteDetail('${q.id}')">
     <div class="quote-icon"><i class="ti ti-file-invoice"></i></div>
     <div class="quote-info">
       <div class="quote-title">${q.title || 'Untitled Quote'}</div>
-      <div class="quote-sub"><span class="tag ${q.status}">${q.status}</span>${q.customer ? ' · ' + q.customer : ''}${dateStr ? ' · ' + dateStr : ''}</div>
+      <div class="quote-sub">${numBadge}<span class="tag ${q.status}">${quoteStatusLabel(q.status)}</span>${q.customer ? ' · ' + q.customer : ''}${dateStr ? ' · ' + dateStr : ''}</div>
     </div>
     <div class="quote-right">
       <div class="quote-amt">${total > 0 ? $f(total) : '—'}</div>
@@ -2951,8 +2995,10 @@ async function createNewQuote() {
   const notes = document.getElementById('qn-notes').value.trim();
   const applyTax = document.getElementById('qn-tax').checked;
   if (!customer) { alert('Please select a customer.'); return; }
+  const quoteNumber = generateQuoteNumber();
   const quote = {
     id: Date.now().toString(), status: 'draft',
+    quoteNumber, version: 1, parentId: null,
     customer, jobId, title: title || customer + ' Quote',
     date: date ? localDateToISO(date) : new Date().toISOString(),
     notes, applyTax, completedDate: '', totalAmount: 0, amountPaid: 0,
@@ -2975,7 +3021,7 @@ function renderQuoteDetail() {
   const quote = _quotes.find(q => q.id === _currentQuoteId);
   if (!quote) return;
   const isDraft = quote.status === 'draft';
-  const isEditable = isDraft || quote.status === 'finalized' || quote.status === 'completed' || quote.status === 'paid';
+  const isEditable = !['superseded'].includes(quote.status);
   const { subtotal, tax, total, paid, balance } = quoteTotals(quote);
   document.getElementById('qd-title').textContent = quote.title || 'Quote';
   document.getElementById('qd-edit-btn').style.display = isEditable ? 'flex' : 'none';
@@ -2984,11 +3030,13 @@ function renderQuoteDetail() {
   // Header card
   html += `<div class="detail-section">
     <div class="detail-card">
-      <div class="detail-row"><span class="lbl">Status</span><span class="val"><span class="tag ${quote.status}">${quote.status}</span></span></div>
+      <div class="detail-row"><span class="lbl">Status</span><span class="val"><span class="tag ${quote.status}">${quoteStatusLabel(quote.status)}</span></span></div>
+      ${quote.quoteNumber ? `<div class="detail-row"><span class="lbl">Quote #</span><span class="val">${quote.quoteNumber}${(quote.version||1) > 1 ? ' <span style="background:var(--surface2);color:var(--text3);border-radius:4px;padding:1px 5px;font-size:11px;font-weight:600">v'+quote.version+'</span>' : ''}</span></div>` : ''}
       <div class="detail-row"><span class="lbl">Customer</span><span class="val">${quote.customer || '—'}</span></div>
       ${quote.jobId ? `<div class="detail-row"><span class="lbl">Job</span><span class="val">${jobName(quote.jobId)}</span></div>` : ''}
       <div class="detail-row"><span class="lbl">Date</span><span class="val">${quote.date ? new Date(quote.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—'}</span></div>
       ${quote.completedDate ? `<div class="detail-row"><span class="lbl">Completed</span><span class="val">${new Date(quote.completedDate).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span></div>` : ''}
+      ${quote.parentId ? `<div class="detail-row"><span class="lbl">Revision of</span><span class="val" style="font-size:12px;color:var(--text3)">${quote.quoteNumber} v${(quote.version||1)-1}</span></div>` : ''}
       ${quote.notes ? `<div class="detail-row"><span class="lbl">Notes</span><span class="val" style="max-width:60%;text-align:right;white-space:pre-wrap">${quote.notes}</span></div>` : ''}
     </div>
   </div>`;
@@ -3045,39 +3093,130 @@ function renderQuoteDetail() {
   document.getElementById('qd-body').innerHTML = html;
 
   // Action bar
+  const qid = quote.id;
   let actions = '';
   if (quote.status === 'draft') {
-    actions = `<button class="btn-primary" style="flex:1" onclick="finalizeQuote('${quote.id}')">Finalize Quote</button>
-      <button class="btn-secondary" style="color:var(--danger)" onclick="confirmDeleteQuote('${quote.id}')"><i class="ti ti-trash"></i></button>`;
-  } else if (quote.status === 'finalized') {
-    actions = `<button class="btn-secondary" onclick="reopenQuote('${quote.id}')"><i class="ti ti-pencil"></i></button>
-      <button class="btn-secondary" onclick="generateProposal('${quote.id}')" title="Download proposal"><i class="ti ti-file-download"></i></button>
-      <button class="btn-secondary" style="flex:1" onclick="markCompleted('${quote.id}')">Mark Completed</button>
-      <button class="btn-primary" style="flex:1" onclick="openRecordPaymentModal('${quote.id}')">Record Payment</button>`;
+    const canRevise = quote.quoteNumber && quote.parentId === null;
+    actions = `<button class="btn-primary" style="flex:1" onclick="markSent('${qid}')"><i class="ti ti-send"></i> Mark as Sent</button>
+      ${canRevise ? `<button class="btn-secondary" onclick="createRevision('${qid}')" title="Create new revision"><i class="ti ti-git-branch"></i></button>` : ''}
+      <button class="btn-secondary" style="color:var(--danger)" onclick="confirmDeleteQuote('${qid}')"><i class="ti ti-trash"></i></button>`;
+  } else if (quote.status === 'sent') {
+    actions = `<button class="btn-secondary" onclick="reopenQuote('${qid}')" title="Reopen as draft"><i class="ti ti-arrow-back-up"></i></button>
+      <button class="btn-secondary" onclick="createRevision('${qid}')" title="Create revision"><i class="ti ti-git-branch"></i></button>
+      <button class="btn-secondary" style="flex:1;color:var(--danger)" onclick="markDeclined('${qid}')">Decline</button>
+      <button class="btn-primary" style="flex:1" onclick="markApproved('${qid}')">Approved</button>`;
+  } else if (quote.status === 'approved') {
+    actions = `<button class="btn-secondary" onclick="createRevision('${qid}')" title="Create revision"><i class="ti ti-git-branch"></i></button>
+      <button class="btn-secondary" style="color:var(--danger)" onclick="markCancelled('${qid}')" title="Cancel"><i class="ti ti-x"></i></button>
+      <button class="btn-secondary" style="flex:1" onclick="openRecordPaymentModal('${qid}')"><i class="ti ti-cash"></i></button>
+      <button class="btn-primary" style="flex:1" onclick="markInProgress('${qid}')"><i class="ti ti-player-play"></i> Start Work</button>`;
+  } else if (quote.status === 'in_progress') {
+    actions = `<button class="btn-secondary" style="color:var(--danger)" onclick="markCancelled('${qid}')" title="Cancel"><i class="ti ti-x"></i></button>
+      <button class="btn-secondary" style="flex:1" onclick="openRecordPaymentModal('${qid}')"><i class="ti ti-cash"></i> Payment</button>
+      <button class="btn-primary" style="flex:1" onclick="markCompleted('${qid}')"><i class="ti ti-check"></i> Mark Completed</button>`;
   } else if (quote.status === 'completed') {
-    actions = `<button class="btn-secondary" onclick="generateReceipt('${quote.id}')"><i class="ti ti-printer"></i></button>
-      <button class="btn-primary" style="flex:1" onclick="openRecordPaymentModal('${quote.id}')"><i class="ti ti-cash"></i> Record Payment</button>`;
+    actions = `<button class="btn-secondary" onclick="generateReceipt('${qid}')"><i class="ti ti-printer"></i></button>
+      <button class="btn-secondary" style="color:var(--danger)" onclick="markCancelled('${qid}')" title="Cancel"><i class="ti ti-x"></i></button>
+      <button class="btn-primary" style="flex:1" onclick="openRecordPaymentModal('${qid}')"><i class="ti ti-cash"></i> Record Payment</button>`;
   } else if (quote.status === 'paid') {
     const missingEntries = (quote.payments || []).filter(p => !_entries.find(e => e.id === p.entryId));
     const resyncBtn = missingEntries.length
-      ? `<button class="btn-secondary" style="color:var(--warn)" title="Recover missing income entries" onclick="resyncQuoteEntries('${quote.id}')"><i class="ti ti-refresh"></i></button>`
+      ? `<button class="btn-secondary" style="color:var(--warn)" title="Recover missing income entries" onclick="resyncQuoteEntries('${qid}')"><i class="ti ti-refresh"></i></button>`
       : '';
-    actions = `<button class="btn-secondary" onclick="generateReceipt('${quote.id}')"><i class="ti ti-printer"></i></button>
+    actions = `<button class="btn-secondary" onclick="generateReceipt('${qid}')"><i class="ti ti-printer"></i></button>
       <div style="flex:1;text-align:center;color:var(--success);font-weight:600;font-size:14px"><i class="ti ti-circle-check"></i> Fully Paid</div>
       ${resyncBtn}
-      <button class="btn-secondary" style="color:var(--danger)" onclick="confirmDeleteQuote('${quote.id}')"><i class="ti ti-trash"></i></button>`;
+      <button class="btn-secondary" style="color:var(--danger)" onclick="confirmDeleteQuote('${qid}')"><i class="ti ti-trash"></i></button>`;
+  } else if (quote.status === 'declined' || quote.status === 'cancelled') {
+    actions = `<button class="btn-secondary" style="flex:1" onclick="reopenQuote('${qid}')"><i class="ti ti-arrow-back-up"></i> Reopen as Draft</button>`;
+  } else if (quote.status === 'superseded') {
+    actions = `<div style="flex:1;text-align:center;color:var(--text3);font-size:13px">Superseded — view only</div>`;
   }
   document.getElementById('qd-actions').innerHTML = actions;
 }
 
-function finalizeQuote(id) {
-  if (!confirm('Finalize this quote? You can still edit it or reopen it to draft if needed.')) return;
+function markSent(id) {
   const quote = _quotes.find(q => q.id === id);
   if (!quote) return;
-  quote.status = 'finalized';
+  quote.status = 'sent';
   saveQuoteOptimistic(quote);
   renderQuoteDetail();
-  showToast('Quote finalized', 'success');
+  showToast('Quote marked as sent', 'success');
+}
+
+function markApproved(id) {
+  const quote = _quotes.find(q => q.id === id);
+  if (!quote) return;
+  quote.status = 'approved';
+  saveQuoteOptimistic(quote);
+  renderQuoteDetail();
+  showToast('Quote approved', 'success');
+}
+
+function markInProgress(id) {
+  const quote = _quotes.find(q => q.id === id);
+  if (!quote) return;
+  quote.status = 'in_progress';
+  saveQuoteOptimistic(quote);
+  renderQuoteDetail();
+  showToast('Work started', 'success');
+}
+
+function markDeclined(id) {
+  if (!confirm('Mark this quote as declined?')) return;
+  const quote = _quotes.find(q => q.id === id);
+  if (!quote) return;
+  quote.status = 'declined';
+  saveQuoteOptimistic(quote);
+  renderQuoteDetail();
+  showToast('Quote declined', 'success');
+}
+
+function markCancelled(id) {
+  if (!confirm('Cancel this quote?')) return;
+  const quote = _quotes.find(q => q.id === id);
+  if (!quote) return;
+  quote.status = 'cancelled';
+  saveQuoteOptimistic(quote);
+  renderQuoteDetail();
+  showToast('Quote cancelled', 'success');
+}
+
+async function createRevision(id) {
+  const original = _quotes.find(q => q.id === id);
+  if (!original) return;
+  const allowedFrom = ['draft', 'sent', 'approved'];
+  if (!allowedFrom.includes(original.status)) {
+    alert('Revisions can only be created from Draft, Sent, or Approved quotes.');
+    return;
+  }
+  if (!confirm(`Create a revision of ${original.quoteNumber || 'this quote'}? The current version will be locked as superseded.`)) return;
+  // Supersede original
+  original.status = 'superseded';
+  await saveQuoteOptimistic(original);
+  // Create new revision
+  const newQuote = {
+    id: Date.now().toString(),
+    status: 'draft',
+    quoteNumber: original.quoteNumber,
+    version: (original.version || 1) + 1,
+    parentId: original.parentId || original.id,
+    customer: original.customer,
+    jobId: original.jobId,
+    title: original.title,
+    date: new Date().toISOString(),
+    notes: original.notes,
+    applyTax: original.applyTax,
+    completedDate: '',
+    totalAmount: 0,
+    amountPaid: 0,
+    lineItems: (original.lineItems || []).map(li => ({ ...li })),
+    payments: []
+  };
+  _quotes.unshift(newQuote);
+  db.collection('quotes').doc(newQuote.id).set(newQuote).catch(() => showToast('Sync failed', 'error'));
+  openQuoteDetail(newQuote.id);
+  showToast(`${newQuote.quoteNumber} v${newQuote.version} created`, 'success');
 }
 
 function markCompleted(id) {
@@ -3118,7 +3257,7 @@ function markCompleted(id) {
 function reopenQuote(id) {
   const quote = _quotes.find(q => q.id === id);
   if (!quote) return;
-  if (!confirm('Reopen this quote as a draft? You can edit line items again.')) return;
+  if (!confirm('Reopen this quote as a draft?')) return;
   quote.status = 'draft';
   saveQuoteOptimistic(quote);
   renderQuoteDetail();
