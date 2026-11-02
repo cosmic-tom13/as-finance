@@ -1,4 +1,4 @@
-const CACHE = 'as-finance-v3';
+const CACHE = 'as-finance-v4';
 const PRECACHE = [
   './activate_finance_tracker.html',
   'https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css',
