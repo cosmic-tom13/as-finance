@@ -3098,7 +3098,8 @@ function renderQuoteDetail() {
   let actions = '';
   if (quote.status === 'draft') {
     const canRevise = quote.quoteNumber && quote.parentId === null;
-    actions = `<button class="btn-primary" style="flex:1" onclick="markSent('${qid}')"><i class="ti ti-send"></i> Mark as Sent</button>
+    actions = `<button class="btn-secondary" onclick="generateProposal('${qid}')" title="Print quote" aria-label="Print quote"><i class="ti ti-printer"></i></button>
+      <button class="btn-primary" style="flex:1" onclick="markSent('${qid}')"><i class="ti ti-send"></i> Mark as Sent</button>
       ${canRevise ? `<button class="btn-secondary" onclick="createRevision('${qid}')" title="Create new revision"><i class="ti ti-git-branch"></i></button>` : ''}
       <button class="btn-secondary" style="color:var(--danger)" onclick="confirmDeleteQuote('${qid}')"><i class="ti ti-trash"></i></button>`;
   } else if (quote.status === 'sent') {
@@ -3410,7 +3411,8 @@ function generateProposal(id) {
   const proposalDate = quote.date
     ? new Date(quote.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     : new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  const proposalNum = 'Q-' + String(quote.id).slice(-6);
+  const proposalNum = (quote.quoteNumber || 'Q-' + String(quote.id).slice(-6)) +
+    ((quote.version || 1) > 1 ? ' v' + quote.version : '');
   const fm = n => '$' + parseFloat(n || 0).toFixed(2);
 
   const lineRow = (item, shade) => `
