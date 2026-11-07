@@ -3103,17 +3103,20 @@ function renderQuoteDetail() {
       ${canRevise ? `<button class="btn-secondary" onclick="createRevision('${qid}')" title="Create new revision"><i class="ti ti-git-branch"></i></button>` : ''}
       <button class="btn-secondary" style="color:var(--danger)" onclick="confirmDeleteQuote('${qid}')"><i class="ti ti-trash"></i></button>`;
   } else if (quote.status === 'sent') {
-    actions = `<button class="btn-secondary" onclick="reopenQuote('${qid}')" title="Reopen as draft"><i class="ti ti-arrow-back-up"></i></button>
+    actions = `<button class="btn-secondary" onclick="generateProposal('${qid}')" title="Print quote" aria-label="Print quote"><i class="ti ti-printer"></i></button>
+      <button class="btn-secondary" onclick="reopenQuote('${qid}')" title="Reopen as draft"><i class="ti ti-arrow-back-up"></i></button>
       <button class="btn-secondary" onclick="createRevision('${qid}')" title="Create revision"><i class="ti ti-git-branch"></i></button>
       <button class="btn-secondary" style="flex:1;color:var(--danger)" onclick="markDeclined('${qid}')">Decline</button>
       <button class="btn-primary" style="flex:1" onclick="markApproved('${qid}')">Approved</button>`;
   } else if (quote.status === 'approved') {
-    actions = `<button class="btn-secondary" onclick="createRevision('${qid}')" title="Create revision"><i class="ti ti-git-branch"></i></button>
+    actions = `<button class="btn-secondary" onclick="generateProposal('${qid}')" title="Print quote" aria-label="Print quote"><i class="ti ti-printer"></i></button>
+      <button class="btn-secondary" onclick="createRevision('${qid}')" title="Create revision"><i class="ti ti-git-branch"></i></button>
       <button class="btn-secondary" style="color:var(--danger)" onclick="markCancelled('${qid}')" title="Cancel"><i class="ti ti-x"></i></button>
       <button class="btn-secondary" style="flex:1" onclick="openRecordPaymentModal('${qid}')"><i class="ti ti-cash"></i></button>
       <button class="btn-primary" style="flex:1" onclick="markInProgress('${qid}')"><i class="ti ti-player-play"></i> Start Work</button>`;
   } else if (quote.status === 'in_progress') {
-    actions = `<button class="btn-secondary" style="color:var(--danger)" onclick="markCancelled('${qid}')" title="Cancel"><i class="ti ti-x"></i></button>
+    actions = `<button class="btn-secondary" onclick="generateProposal('${qid}')" title="Print quote" aria-label="Print quote"><i class="ti ti-printer"></i></button>
+      <button class="btn-secondary" style="color:var(--danger)" onclick="markCancelled('${qid}')" title="Cancel"><i class="ti ti-x"></i></button>
       <button class="btn-secondary" style="flex:1" onclick="openRecordPaymentModal('${qid}')"><i class="ti ti-cash"></i> Payment</button>
       <button class="btn-primary" style="flex:1" onclick="markCompleted('${qid}')"><i class="ti ti-check"></i> Mark Completed</button>`;
   } else if (quote.status === 'completed') {
