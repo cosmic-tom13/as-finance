@@ -3472,7 +3472,6 @@ function generateProposal(id) {
     tableBody += subtotalHtml('Labor Subtotal', fm(laborSubtotal));
   }
   if (!lineItems.length) tableBody += `<tr><td colspan="5" style="padding:8px;text-align:center;color:#888;font-size:12px">No line items</td></tr>`;
-  tableBody += totalHtml('PIECE 1 TOTAL', fm(grandTotal));
 
   const scopeNotes = quote.notes
     ? quote.notes.split('\n').map(n => n.trim()).filter(Boolean)
@@ -3506,7 +3505,7 @@ function generateProposal(id) {
     </tr>
   </table>
 
-  <div style="font-size:15px;font-weight:700;color:#155F8A;border-bottom:3px solid #1A7FAA;padding-bottom:4px;margin:24px 0 8px">PIECE 1 — ${quote.title || 'Scope of Work'}</div>
+  <div style="font-size:15px;font-weight:700;color:#155F8A;border-bottom:3px solid #1A7FAA;padding-bottom:4px;margin:24px 0 8px">${quote.title || 'Scope of Work'}</div>
   <div style="font-size:12px;color:#444;margin-bottom:10px">${quote.notes ? quote.notes.split('\n')[0] : 'Work as detailed in line items below.'}</div>
 
   <table style="margin-bottom:16px">
