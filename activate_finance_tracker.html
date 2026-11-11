@@ -1392,7 +1392,14 @@ let _lastLng = null;
 let _geofenceNotified = {};
 
 // ─── PIN CACHE (localStorage, available before data loads) ───────────────────
-function getPinCache() { try { return localStorage.getItem('as_pin_cache') || '1234'; } catch(e) { return '1234'; } }
+function getPinCache() { try { return localStorage.getItem('as_pin_cache'); } catch(e) { return null; } }
+
+// Fresh device (no cached PIN): the PIN must be verified against Firestore, never a built-in default
+async function fetchRemotePin() {
+  if (!firebase.auth().currentUser) await firebase.auth().signInAnonymously();
+  const snap = await db.collection('settings').doc('main').get({ source: 'server' });
+  return (snap.exists && snap.data().pin) || '1234';
+}
 function setPinCache(p) { try { localStorage.setItem('as_pin_cache', p); } catch(e) {} }
 
 // ─── FIRESTORE HELPERS ───────────────────────────────────────────────────────
@@ -1595,7 +1602,6 @@ window.addEventListener('popstate', function(e) {
 
 // ─── PIN ──────────────────────────────────────────────────────────────────────
 (function initPin() {
-  if (getPinCache() === '1234') document.getElementById('pin-hint').textContent = 'Default PIN is 1234';
   updateBiometricBtn();
   // Auto-trigger biometric prompt on open if registered
   if (getBioCredId()) setTimeout(() => tryBiometricLogin(), 400);
@@ -1610,8 +1616,9 @@ function pinTap(k) {
   updateDots();
   if (pinBuffer.length === 4) {
     setTimeout(async () => {
-      if (pinBuffer === stored) {
+      const enterApp = async () => {
         pinBuffer = ''; updateDots();
+        document.getElementById('pin-error').textContent = '';
         if (_dataLoaded) { showScreen('screen-home'); return; }
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         document.getElementById('screen-loading').classList.add('active');
@@ -1621,6 +1628,19 @@ function pinTap(k) {
           geocodeAllJobs();
           showScreen('screen-home');
         });
+      };
+      if (stored === null) {
+        const entered = pinBuffer;
+        pinBuffer = ''; updateDots();
+        document.getElementById('pin-error').textContent = 'Verifying…';
+        let remote;
+        try { remote = await fetchRemotePin(); }
+        catch (e) { document.getElementById('pin-error').textContent = 'Could not verify PIN. Check your connection.'; return; }
+        if (entered !== remote) { document.getElementById('pin-error').textContent = 'Incorrect PIN. Try again.'; return; }
+        setPinCache(remote);
+        await enterApp();
+      } else if (pinBuffer === stored) {
+        await enterApp();
       } else {
         document.getElementById('pin-error').textContent = 'Incorrect PIN. Try again.';
         pinBuffer = ''; updateDots();
