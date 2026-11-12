@@ -1214,6 +1214,7 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
       <button class="choice-btn" onclick="selectPayMethod('Venmo')">Venmo</button>
       <button class="choice-btn" onclick="selectPayMethod('Cash App')">Cash App</button>
       <button class="choice-btn" onclick="selectPayMethod('Zelle')">Zelle</button>
+      <button class="choice-btn" onclick="selectPayMethod('Bluevine')">Bluevine</button>
     </div>
     <label class="field-label" style="margin-top:12px">Date</label>
     <input type="date" id="pay-date">
@@ -1321,7 +1322,7 @@ const IRS_RATE = 0.70;
 const SA_TAX_RATE = 0.0825;     // San Antonio, TX combined sales tax rate (8.25%)
 const SA_TAX_LABEL = (SA_TAX_RATE * 100).toFixed(3).replace(/\.?0+$/, '') + '%';  // "8.25%"
 const DEFAULT_CATS = ['Tools & Equipment','Fuel/Mileage','Materials','Insurance','Platform Fees (Angi)','Advertising','Subcontractors','Other'];
-const PAYMENT_METHODS = ['Cash','Check','Venmo','Cash App','Zelle'];
+const PAYMENT_METHODS = ['Cash','Check','Venmo','Cash App','Zelle','Bluevine'];
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const PG_UNITS = ['flat','per hour','per sq ft','per door','per window','per fixture','per outlet','per room','per board','per post','per linear ft'];
 const DEFAULT_PRICE_GUIDE = [
@@ -2647,7 +2648,7 @@ function startEditEntry() {
     html += `<div>
       <label class="field-label">Payment method</label>
       <select id="edit-paymethod">
-        ${['Cash','Check','Venmo','Cash App','Zelle'].map(m => `<option value="${m}" ${entry.payMethod === m ? 'selected' : ''}>${m}</option>`).join('')}
+        ${PAYMENT_METHODS.map(m => `<option value="${m}" ${entry.payMethod === m ? 'selected' : ''}>${m}</option>`).join('')}
       </select>
     </div>`;
   }
