@@ -1041,6 +1041,7 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
   <div class="topbar">
     <button class="topbar-btn" onclick="showScreen('screen-quotes')" aria-label="Back"><i class="ti ti-arrow-left"></i></button>
     <h1 id="qd-title">Quote</h1>
+    <button class="topbar-btn" id="qd-dup-btn" onclick="duplicateQuote(_currentQuoteId)" aria-label="Duplicate quote" title="Duplicate quote"><i class="ti ti-copy"></i></button>
     <button class="topbar-btn" id="qd-edit-btn" onclick="openEditQuoteInfo()" aria-label="Edit"><i class="ti ti-pencil"></i></button>
   </div>
   <div class="scrollable" id="qd-body" style="padding-top:4px">
@@ -3208,6 +3209,39 @@ function markCancelled(id) {
   saveQuoteOptimistic(quote);
   renderQuoteDetail();
   showToast('Quote cancelled', 'success');
+}
+
+// Duplicate a quote as a brand-new, independent draft. Unlike a revision, the
+// original is left untouched and the copy gets its own quote number (v1).
+// Works from any status; payments and completion info are not copied.
+function duplicateQuote(id) {
+  const original = _quotes.find(q => q.id === id);
+  if (!original) return;
+  if (!confirm(`Duplicate ${original.quoteNumber || 'this quote'} as a new draft?`)) return;
+  const baseId = Date.now();
+  const newQuote = {
+    id: baseId.toString(),
+    status: 'draft',
+    quoteNumber: generateQuoteNumber(),
+    version: 1,
+    parentId: null,
+    customer: original.customer,
+    jobId: original.jobId || '',
+    title: (original.title || 'Quote') + ' (Copy)',
+    date: new Date().toISOString(),
+    notes: original.notes || '',
+    applyTax: !!original.applyTax,
+    completedDate: '',
+    totalAmount: 0,
+    amountPaid: 0,
+    lineItems: (original.lineItems || []).map((li, i) => ({ ...li, id: baseId + '_' + i })),
+    payments: []
+  };
+  newQuote.totalAmount = quoteTotals(newQuote).total;
+  _quotes.unshift(newQuote);
+  db.collection('quotes').doc(newQuote.id).set(newQuote).catch(() => showToast('Sync failed', 'error'));
+  openQuoteDetail(newQuote.id);
+  showToast(`Duplicated as ${newQuote.quoteNumber}`, 'success');
 }
 
 async function createRevision(id) {
