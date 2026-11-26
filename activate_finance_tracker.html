@@ -955,6 +955,9 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
         <div class="settings-row" onclick="exportCSV()">
           <i class="ti ti-file-download s-icon"></i><span class="s-label">Export CSV</span><i class="ti ti-chevron-right s-arr"></i>
         </div>
+        <div class="settings-row" onclick="exportCustomersCSV()">
+          <i class="ti ti-address-book s-icon"></i><span class="s-label">Export customers &amp; addresses</span><i class="ti ti-chevron-right s-arr"></i>
+        </div>
         <div class="settings-row danger" onclick="openModal('modal-clear')">
           <i class="ti ti-trash s-icon"></i><span class="s-label">Clear all data</span><i class="ti ti-chevron-right s-arr"></i>
         </div>
@@ -2671,6 +2674,33 @@ function exportCSV() {
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
   a.download = 'activate_solutions_' + new Date().toISOString().slice(0, 10) + '.csv';
   a.click();
+}
+
+// One row per customer per distinct job address (variants like "2930 Burnside" / "2930 Burnside Drive" merge, longest kept)
+function exportCustomersCSV() {
+  const customers = _customers.filter(c => c && c !== 'No customer').sort((a, b) => a.localeCompare(b));
+  if (!customers.length) { alert('No customers to export yet.'); return; }
+  const esc = v => {
+    v = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+    return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  };
+  const rows = [];
+  customers.forEach(c => {
+    const best = new Map();
+    _jobs.filter(j => j.customer === c && (j.location || '').trim()).forEach(j => {
+      const addr = j.location.replace(/\s+/g, ' ').trim();
+      const key = addr.toLowerCase().replace(/[.,#]/g, ' ').split(/\s+/).filter(Boolean).slice(0, 2).join(' ');
+      if (!best.has(key) || addr.length > best.get(key).length) best.set(key, addr);
+    });
+    if (!best.size) rows.push([c, '']);
+    else [...best.values()].sort().forEach(addr => rows.push([c, addr]));
+  });
+  const csv = '﻿' + [['Customer', 'Address'], ...rows].map(r => r.map(esc).join(',')).join('\r\n') + '\r\n';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = 'activate_solutions_customers_' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+  showToast(rows.length + ' rows exported', 'success');
 }
 
 
