@@ -2541,6 +2541,8 @@ function refreshHistory() {
       (e.payMethod || '').toLowerCase().includes(query) ||
       (e.card || '').toLowerCase().includes(query);
   });
+  // Newest entry date first; same date and time falls back to most recently created
+  d.sort((a, b) => (new Date(b.date) - new Date(a.date)) || String(b.id).localeCompare(String(a.id)));
   const el = document.getElementById('history-list');
   el.innerHTML = d.length === 0
     ? '<div class="empty-state"><i class="ti ti-inbox"></i><p>No entries found</p></div>'
