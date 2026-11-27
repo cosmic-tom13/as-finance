@@ -832,6 +832,12 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
       <div class="report-card" id="r-cat-breakdown"><div style="padding:14px;font-size:13px;color:var(--text3)">No expenses yet</div></div>
     </div>
 
+    <!-- Payment method / card -->
+    <div class="report-block">
+      <h3>Spending by payment method</h3>
+      <div class="report-card" id="r-pay-breakdown"><div style="padding:14px;font-size:13px;color:var(--text3)">No expenses yet</div></div>
+    </div>
+
     <!-- Reimbursable -->
     <div class="report-block">
       <h3>Reimbursable expenses</h3>
@@ -934,6 +940,13 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
         <button class="add-chip" style="margin:0" onclick="openModal('modal-addcat')"><i class="ti ti-plus"></i>Add category</button>
       </div>
       <div class="chip-area" id="category-chips"></div>
+    </div>
+    <div class="settings-group">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <h3 style="margin:0">My cards</h3>
+        <button class="add-chip" style="margin:0" onclick="openCardModal('Credit Card')"><i class="ti ti-plus"></i>Add card</button>
+      </div>
+      <div class="chip-area" id="card-chips"></div>
     </div>
     <div class="settings-group">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -1334,8 +1347,13 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
     <select id="rec-category"></select>
     <label class="field-label" style="margin-top:12px">Vendor (optional)</label>
     <input type="text" id="rec-vendor" placeholder="e.g. Angi">
-    <label class="field-label" style="margin-top:12px">Payment method (optional)</label>
-    <select id="rec-paymethod"></select>
+    <label class="field-label" style="margin-top:12px">Payment method</label>
+    <select id="rec-paymethod" onchange="refreshCardSelect('rec', '')"></select>
+    <div id="rec-card-wrap" style="display:none">
+      <label class="field-label" style="margin-top:12px">Card</label>
+      <select id="rec-card"></select>
+      <button type="button" class="add-chip" style="margin:8px 0 0" onclick="addCardFor('rec')"><i class="ti ti-plus"></i>Add new card</button>
+    </div>
     <div style="display:flex;gap:10px;margin-top:12px">
       <div style="flex:1">
         <label class="field-label">First date</label>
@@ -1355,6 +1373,28 @@ label.field-label { font-size: 12px; font-weight: 600; text-transform: uppercase
       <button class="btn-secondary" id="rec-delete-btn" onclick="deleteRecurring()" style="color:var(--danger);display:none">Delete</button>
       <button class="btn-secondary" onclick="closeModal('modal-recurring')">Cancel</button>
       <button class="btn-primary" onclick="saveRecurring()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CARD (kept last so it opens above the entry and recurring modals) -->
+<div class="modal-overlay" id="modal-addcard" onclick="closeModalOutside(event,'modal-addcard')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <p class="modal-title">Add card</p>
+    <label class="field-label">Card nickname</label>
+    <input type="text" id="card-name" placeholder="e.g. Chase Ink" maxlength="30" autocomplete="off">
+    <label class="field-label" style="margin-top:12px">Last 4 digits (optional)</label>
+    <input type="text" id="card-last4" placeholder="1234" inputmode="numeric" maxlength="4" autocomplete="off">
+    <label class="field-label" style="margin-top:12px">Card type</label>
+    <select id="card-type">
+      <option value="Credit Card">Credit card</option>
+      <option value="Debit Card">Debit card</option>
+    </select>
+    <p style="font-size:12px;color:var(--text3);margin-top:10px;line-height:1.5">Never enter a full card number, expiration date or security code.</p>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn-secondary" onclick="closeModal('modal-addcard')">Cancel</button>
+      <button class="btn-primary" onclick="saveCard()">Add</button>
     </div>
   </div>
 </div>
@@ -1385,7 +1425,9 @@ const IRS_RATE = 0.70;
 const SA_TAX_RATE = 0.0825;     // San Antonio, TX combined sales tax rate (8.25%)
 const SA_TAX_LABEL = (SA_TAX_RATE * 100).toFixed(3).replace(/\.?0+$/, '') + '%';  // "8.25%"
 const DEFAULT_CATS = ['Tools & Equipment','Fuel/Mileage','Materials','Insurance','Platform Fees (Angi)','Advertising','Subcontractors','Other'];
-const PAYMENT_METHODS = ['Cash','Check','Venmo','Cash App','Zelle','Bluevine'];
+const PAYMENT_METHODS = ['Cash','Check','Venmo','Cash App','Zelle','Bluevine'];   // how customers pay (income)
+const EXPENSE_PAY_METHODS = ['Cash','Credit Card','Debit Card','Check','Zelle','Venmo','Cash App'];
+const CARD_METHODS = ['Credit Card','Debit Card'];   // methods that also record which card
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const PG_UNITS = ['flat','per hour','per sq ft','per door','per window','per fixture','per outlet','per room','per board','per post','per linear ft'];
 const DEFAULT_PRICE_GUIDE = [
@@ -1444,6 +1486,7 @@ let _dataLoaded = false;
 let _quotes = [];
 let _priceGuide = [...DEFAULT_PRICE_GUIDE];
 let _recurring = [];   // recurring expense templates (stored in lists/recurring)
+let _cards = [];       // saved cards: { id, name, last4, type } (stored in lists/cards)
 let _quotesLoaded = false;
 let _currentQuoteId = null;
 let _quoteFilter = 'all';
@@ -1485,6 +1528,7 @@ function syncPost(data) {
     case 'saveVendors':     dbSet('lists', 'vendors',     { values: data.vendors });     break;
     case 'savePriceGuide':  dbSet('lists', 'priceGuide',  { items:  data.priceGuide });  break;
     case 'saveRecurring':   dbSet('lists', 'recurring',   { items:  data.recurring });   break;
+    case 'saveCards':       dbSet('lists', 'cards',       { items:  data.cards });       break;
     case 'saveSettings':    dbSet('settings', 'main',     data.settings);               break;
     default: console.warn('syncPost: unknown action', data.action);
   }
@@ -1530,6 +1574,7 @@ async function loadInitialData() {
   _vendors    = lists.vendors?.values    || [];
   _priceGuide = (lists.priceGuide?.items?.length)   ? lists.priceGuide.items   : [...DEFAULT_PRICE_GUIDE];
   _recurring  = lists.recurring?.items || [];
+  _cards      = lists.cards?.items || [];
   _hasOlderEntries = false;
   _dataLoaded  = true;
   _quotesLoaded = true;
@@ -1935,6 +1980,8 @@ function buildExpenseSteps() {
     { q: 'How much did you spend?', type: 'amount', key: 'amount' },
     { q: 'What category?', type: 'choice', key: 'category', opts: _categories.map(c => ({ label: c })), dynamic: true },
     { q: 'Who did you buy from?', type: 'vendor', key: 'vendor', optional: true },
+    { q: 'How did you pay?', type: 'choice', key: 'payMethod', opts: EXPENSE_PAY_METHODS.map(m => ({ label: m, icon: payIcon(m) })) },
+    { q: 'Which card?', type: 'card', key: 'card', condition: () => CARD_METHODS.includes(wizardData.payMethod) },
     { q: 'Will the customer reimburse this?', type: 'choice', key: 'reimbursable', opts: [
       { label: 'No', icon: 'ti-x' },
       { label: 'Yes — at cost', icon: 'ti-check' },
@@ -1998,6 +2045,14 @@ function renderStep() {
       const ico = o.icon ? `<i class="ti ${o.icon}"></i>` : '';
       html += `<button class="choice-btn ${center} ${sel}" onclick="choicePick('${step.key}','${o.label.replace(/'/g,"\\'")}',this)">${ico}${o.label}</button>`;
     });
+    html += `</div>`;
+  } else if (step.type === 'card') {
+    html += `<div class="choice-list">`;
+    cardsOfType(wizardData.payMethod).forEach(c => {
+      const sel = wizardData.card === cardLabel(c) ? 'sel' : '';
+      html += `<button class="choice-btn ${sel}" onclick="pickCard('${c.id}',this)"><i class="ti ti-credit-card"></i>${escHtml(cardLabel(c))}</button>`;
+    });
+    html += `<button class="choice-btn" onclick="addCardFromWizard()"><i class="ti ti-plus"></i>Add new card…</button>`;
     html += `</div>`;
   } else if (step.type === 'customer') {
     const custs = _customers;
@@ -2125,6 +2180,7 @@ function renderStep() {
 }
 
 function choicePick(key, val, btn) {
+  if (key === 'payMethod' && wizardData.payMethod !== val) delete wizardData.card;
   wizardData[key] = val;
   btn.closest('.choice-list').querySelectorAll('.choice-btn').forEach(b => b.classList.remove('sel'));
   btn.classList.add('sel');
@@ -2152,7 +2208,7 @@ function wizardNext(skip = false) {
       wizardData.date = v || todayStr();
     } else if (step.type === 'markup') {
       wizardData.markupPct = parseFloat(document.getElementById('ws-markup')?.value) || 20;
-    } else if (step.type === 'choice' || step.type === 'customer') {
+    } else if (step.type === 'choice' || step.type === 'customer' || step.type === 'card') {
       if (!wizardData[step.key] && !step.optional) { alert('Please make a selection.'); return; }
     }
   }
@@ -2237,6 +2293,7 @@ function buildConfirmHTML() {
   if (wizardData.amount) rows += cr('Amount', '$' + parseFloat(wizardData.amount).toFixed(2));
   if (wizardData.miles) rows += cr('Miles', wizardData.miles + ' mi → $' + (wizardData.miles * IRS_RATE).toFixed(2));
   if (wizardData.payMethod) rows += cr('Payment', wizardData.payMethod);
+  if (wizardData.card && CARD_METHODS.includes(wizardData.payMethod)) rows += cr('Card', escHtml(wizardData.card));
   if (wizardData.category) rows += cr('Category', wizardData.category);
   if (wizardData.vendor) rows += cr('Vendor', wizardData.vendor);
   if (wizardData.reimbursable && wizardData.reimbursable !== 'No') rows += cr('Reimbursable', `<span class="tag reimb">${wizardData.reimbursable}</span>`);
@@ -2271,7 +2328,8 @@ async function saveEntry() {
     customer: wizardData.customer || '',
     description: wizardData.description || '',
     vendor: wizardData.vendor || '',
-    jobId: wizardData.jobId || ''
+    jobId: wizardData.jobId || '',
+    card: CARD_METHODS.includes(wizardData.payMethod) ? (wizardData.card || '') : ''
   };
 
   // Optimistic: add locally first
@@ -2446,6 +2504,17 @@ function refreshReports() {
   document.getElementById('r-reimb-cost2').textContent = '$' + rCost.toFixed(2);
   document.getElementById('r-reimb-markup2').textContent = '$' + rMkup.toFixed(2);
 
+  // Spending by payment method / card
+  const pays = {};
+  d.filter(e => e.type === 'expense').forEach(e => {
+    const k = (e.payMethod || 'Not specified') + (e.card ? ' — ' + e.card : '');
+    pays[k] = (pays[k] || 0) + e.amount;
+  });
+  const payBreakEl = document.getElementById('r-pay-breakdown');
+  payBreakEl.innerHTML = Object.keys(pays).length === 0
+    ? '<div style="padding:14px;font-size:13px;color:var(--text3)">No expenses yet</div>'
+    : Object.entries(pays).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<div class="report-row"><span class="rk">${escHtml(k)}</span><span class="rv">$${v.toFixed(2)}</span></div>`).join('');
+
   // Schedule C
   const sched = { 'Advertising': 0, 'Tools & Equipment': 0, 'Materials': 0, 'Insurance': 0, 'Platform Fees (Angi)': 0, 'Fuel/Mileage': milDed, 'Subcontractors': 0, 'Other': 0 };
   d.filter(e => e.type === 'expense').forEach(e => {
@@ -2468,7 +2537,9 @@ function refreshHistory() {
     return (e.description || '').toLowerCase().includes(query) ||
       (e.customer || '').toLowerCase().includes(query) ||
       jobName(e.jobId || '').toLowerCase().includes(query) ||
-      (e.category || '').toLowerCase().includes(query);
+      (e.category || '').toLowerCase().includes(query) ||
+      (e.payMethod || '').toLowerCase().includes(query) ||
+      (e.card || '').toLowerCase().includes(query);
   });
   const el = document.getElementById('history-list');
   el.innerHTML = d.length === 0
@@ -2490,6 +2561,7 @@ function showDetail(id) {
   if (entry.amount) rows += dr('Amount', '$' + entry.amount.toFixed(2));
   if (entry.miles) rows += dr('Miles', entry.miles + ' mi → $' + (entry.miles * IRS_RATE).toFixed(2) + ' deduction');
   if (entry.payMethod) rows += dr('Payment', entry.payMethod);
+  if (entry.card) rows += dr('Card', escHtml(entry.card));
   if (entry.category) rows += dr('Category', entry.category);
   if (entry.vendor) rows += dr('Vendor', entry.vendor);
   if (entry.reimbursable && entry.reimbursable !== 'No') rows += dr('Reimbursable', entry.reimbursable);
@@ -2555,6 +2627,7 @@ function refreshSettings() {
     `<div class="chip">${c}<i class="ti ti-x" onclick="removeCategory(${i})"></i></div>`).join('');
   refreshPriceGuideSettings();
   refreshRecurringSettings();
+  refreshCardSettings();
 }
 
 function savePin() {
@@ -2637,7 +2710,7 @@ function clearAllData() {
   _entries = []; _customers = []; _jobs = []; _categories = [...DEFAULT_CATS];
   _vendors = []; _settings = { pin: '1234', defaultMarkup: 20 };
   _hasOlderEntries = false; _oldestLoadedDate = null; _dataLoaded = false;
-  _quotes = []; _priceGuide = [...DEFAULT_PRICE_GUIDE]; _recurring = []; _quotesLoaded = false;
+  _quotes = []; _priceGuide = [...DEFAULT_PRICE_GUIDE]; _recurring = []; _cards = []; _quotesLoaded = false;
   _currentQuoteId = null;
   try { localStorage.removeItem('as_pin_cache'); localStorage.removeItem('as_sync_queue'); } catch(e) {}
   closeModal('modal-clear');
@@ -2654,7 +2727,7 @@ function syncToSheets() {
 function exportCSV() {
   const d = _entries;
   if (!d.length) { alert('No data to export yet.'); return; }
-  const header = 'Date,Type,Amount,Miles,MileageDeduction,Category,PaymentMethod,Customer,Job,JobLocation,Reimbursable,MarkupPct,BilledAmount,Description,Vendor';
+  const header = 'Date,Type,Amount,Miles,MileageDeduction,Category,PaymentMethod,Customer,Job,JobLocation,Reimbursable,MarkupPct,BilledAmount,Description,Vendor,Card';
   const rows = d.map(e => {
     const ded = e.miles ? (e.miles * IRS_RATE).toFixed(2) : '';
     const billed = e.markupPct > 0 ? (e.amount * (1 + e.markupPct / 100)).toFixed(2) : '';
@@ -2666,7 +2739,8 @@ function exportCSV() {
       '"' + jobLocation(e.jobId || '') + '"',
       e.reimbursable, e.markupPct || '', billed,
       '"' + (e.description || '').replace(/"/g, '""') + '"',
-      '"' + (e.vendor || '').replace(/"/g, '""') + '"'
+      '"' + (e.vendor || '').replace(/"/g, '""') + '"',
+      '"' + (e.card || '').replace(/"/g, '""') + '"'
     ].join(',');
   });
   const csv = [header, ...rows].join('\n');
@@ -2753,6 +2827,17 @@ function startEditEntry() {
   }
   if (isExpense) {
     html += `<div>
+      <label class="field-label">Payment method</label>
+      <select id="edit-paymethod" onchange="refreshCardSelect('edit', '')">
+        ${expensePayOptions(entry.payMethod)}
+      </select>
+    </div>
+    <div id="edit-card-wrap" style="display:none">
+      <label class="field-label">Card</label>
+      <select id="edit-card"></select>
+      <button type="button" class="add-chip" style="margin:8px 0 0" onclick="addCardFor('edit')"><i class="ti ti-plus"></i>Add new card</button>
+    </div>
+    <div>
       <label class="field-label">Category</label>
       <select id="edit-category">
         ${cats.map(c => `<option value="${c}" ${entry.category === c ? 'selected' : ''}>${c}</option>`).join('')}
@@ -2807,6 +2892,7 @@ function startEditEntry() {
   </div>`;
 
   document.getElementById('edit-form-body').innerHTML = html;
+  if (isExpense) refreshCardSelect('edit', entry.card || '');
 
   // Wire up live previews
   const milesInp = document.getElementById('edit-miles');
@@ -2871,6 +2957,8 @@ async function saveEditEntry() {
     entry.miles = v;
   }
   if (payEl) entry.payMethod = payEl.value;
+  const cardEl = document.getElementById('edit-card');
+  if (cardEl) entry.card = CARD_METHODS.includes(entry.payMethod) ? cardEl.value : '';
   if (catEl) entry.category = catEl.value;
   const vendorEl = document.getElementById('edit-vendor');
   if (vendorEl !== null) entry.vendor = vendorEl.value.trim();
@@ -3960,6 +4048,7 @@ function processRecurringExpenses() {
           category: r.category || '', payMethod: r.payMethod || '',
           reimbursable: 'No', markupPct: 0, customer: '',
           description: r.description || '', vendor: r.vendor || '', jobId: '',
+          card: CARD_METHODS.includes(r.payMethod) ? (r.card || '') : '',
           recurringId: r.id
         };
         _entries.unshift(entry);
@@ -4013,9 +4102,8 @@ function openRecurringModal(id) {
   document.getElementById('rec-category').innerHTML = cats.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
   document.getElementById('rec-category').value = r && r.category ? r.category : (cats.includes('Other') ? 'Other' : (cats[0] || ''));
   document.getElementById('rec-vendor').value = r ? (r.vendor || '') : '';
-  document.getElementById('rec-paymethod').innerHTML = '<option value="">Not specified</option>' +
-    PAYMENT_METHODS.map(m => `<option value="${m}">${m}</option>`).join('');
-  document.getElementById('rec-paymethod').value = r ? (r.payMethod || '') : '';
+  document.getElementById('rec-paymethod').innerHTML = expensePayOptions(r ? r.payMethod : '');
+  refreshCardSelect('rec', r ? (r.card || '') : '');
   document.getElementById('rec-start').value = r ? r.startDate : todayStr();
   document.getElementById('rec-end').value = r ? (r.endDate || '') : '';
   document.getElementById('rec-active').checked = r ? !!r.active : true;
@@ -4033,12 +4121,16 @@ function saveRecurring() {
   if (!amount || amount <= 0) { alert('Please enter an amount.'); return; }
   if (!startDate) { alert('Please choose a first date.'); return; }
   if (endDate && endDate < startDate) { alert('The end date must be after the first date.'); return; }
+  const payMethod = document.getElementById('rec-paymethod').value;
+  const card = CARD_METHODS.includes(payMethod) ? document.getElementById('rec-card').value : '';
+  if (!payMethod) { alert('Please choose a payment method.'); return; }
+  if (CARD_METHODS.includes(payMethod) && !card) { alert('Please choose which card.'); return; }
   const data = {
     description, amount,
     frequency: document.getElementById('rec-freq').value,
     category: document.getElementById('rec-category').value,
     vendor: document.getElementById('rec-vendor').value.trim(),
-    payMethod: document.getElementById('rec-paymethod').value,
+    payMethod, card,
     startDate, endDate,
     active: document.getElementById('rec-active').checked
   };
@@ -4061,6 +4153,105 @@ function deleteRecurring() {
   syncPost({ action: 'saveRecurring', recurring: _recurring });
   closeModal('modal-recurring');
   refreshSettings();
+}
+
+// ─── CARDS ────────────────────────────────────────────────────────────────────
+// Only a nickname and optionally the last 4 digits are stored. Entries keep the
+// card's label as text, so removing a card never changes past expenses.
+let _onCardAdded = null;
+
+function cardLabel(c) { return c.last4 ? c.name + ' •' + c.last4 : c.name; }
+function cardsOfType(type) { return _cards.filter(c => c.type === type); }
+
+// <option> list for an expense payment method; keeps an older saved value selectable
+function expensePayOptions(current) {
+  const list = EXPENSE_PAY_METHODS.slice();
+  if (current && !list.includes(current)) list.push(current);
+  return '<option value="">Not specified</option>' +
+    list.map(m => `<option value="${escHtml(m)}" ${current === m ? 'selected' : ''}>${escHtml(m)}</option>`).join('');
+}
+
+// prefix is 'edit' (entry editor) or 'rec' (recurring expense modal)
+function refreshCardSelect(prefix, selected) {
+  const method = document.getElementById(prefix + '-paymethod').value;
+  const isCard = CARD_METHODS.includes(method);
+  document.getElementById(prefix + '-card-wrap').style.display = isCard ? 'block' : 'none';
+  const labels = isCard ? cardsOfType(method).map(cardLabel) : [];
+  if (isCard && selected && !labels.includes(selected)) labels.push(selected);
+  const el = document.getElementById(prefix + '-card');
+  el.innerHTML = '<option value="">Not specified</option>' +
+    labels.map(l => `<option value="${escHtml(l)}">${escHtml(l)}</option>`).join('');
+  el.value = selected || '';
+}
+
+function openCardModal(type, onAdded) {
+  _onCardAdded = onAdded || null;
+  document.getElementById('card-name').value = '';
+  document.getElementById('card-last4').value = '';
+  document.getElementById('card-type').value = type;
+  openModal('modal-addcard');
+  setTimeout(() => document.getElementById('card-name').focus(), 80);
+}
+
+function saveCard() {
+  const name = document.getElementById('card-name').value.trim();
+  const last4 = document.getElementById('card-last4').value.trim();
+  const type = document.getElementById('card-type').value;
+  if (!name) { alert('Please enter a nickname for the card.'); return; }
+  if (/\d{7,}/.test(name.replace(/[\s-]/g, ''))) { alert('That looks like a card number. Enter a nickname only.'); return; }
+  if (last4 && !/^\d{4}$/.test(last4)) { alert('Enter exactly 4 digits, or leave it blank.'); return; }
+  let card = { id: Date.now().toString(), name, last4, type };
+  const existing = _cards.find(c => c.type === type && cardLabel(c).toLowerCase() === cardLabel(card).toLowerCase());
+  if (existing) card = existing;
+  else {
+    _cards.push(card);
+    syncPost({ action: 'saveCards', cards: _cards });
+  }
+  closeModal('modal-addcard');
+  const done = _onCardAdded;
+  _onCardAdded = null;
+  if (done) done(card);
+  else refreshSettings();
+}
+
+function pickCard(id, btn) {
+  const c = _cards.find(x => x.id === id);
+  if (c) choicePick('card', cardLabel(c), btn);
+}
+
+function addCardFromWizard() {
+  openCardModal(wizardData.payMethod, card => {
+    // The card type can be changed in the modal, so keep the payment method in step with it
+    wizardData.payMethod = card.type;
+    wizardData.card = cardLabel(card);
+    renderStep();
+  });
+}
+
+function addCardFor(prefix) {
+  openCardModal(document.getElementById(prefix + '-paymethod').value, card => {
+    document.getElementById(prefix + '-paymethod').value = card.type;
+    refreshCardSelect(prefix, cardLabel(card));
+  });
+}
+
+function removeCard(id) {
+  const c = _cards.find(x => x.id === id);
+  if (!c) return;
+  const inUse = _recurring.some(r => r.card === cardLabel(c) && r.payMethod === c.type);
+  const note = inUse ? ' A recurring expense still uses it, so update that one too.' : '';
+  if (!confirm(`Remove ${cardLabel(c)}? Past expenses won't change.${note}`)) return;
+  _cards = _cards.filter(x => x.id !== id);
+  syncPost({ action: 'saveCards', cards: _cards });
+  refreshSettings();
+}
+
+function refreshCardSettings() {
+  const el = document.getElementById('card-chips');
+  if (!el) return;
+  el.innerHTML = _cards.map(c =>
+    `<div class="chip">${escHtml(cardLabel(c))} <span style="font-size:11px;color:var(--text3)">${c.type === 'Debit Card' ? 'debit' : 'credit'}</span><i class="ti ti-x" onclick="removeCard('${c.id}')"></i></div>`
+  ).join('') || '<span style="font-size:13px;color:var(--text3)">No cards yet</span>';
 }
 
 // ─── PRICE GUIDE SETTINGS ─────────────────────────────────────────────────────
